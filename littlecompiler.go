@@ -141,10 +141,6 @@ func GenerateToken(src []byte) (TokenInfo, int) {
 		}
 	}
 
-	if len(srcStr) == 0 {
-		srcStr = string(src)
-	}
-
 	TokensStrings := map[TokenType]string{
 		TT_ADD:    "+",
 		TT_SUB:    "-",
