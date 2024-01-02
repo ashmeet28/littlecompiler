@@ -188,12 +188,13 @@ func GenerateToken(src []byte) (TokenInfo, int) {
 	}
 
 	for tokType, tokStr := range TokensStrings {
-		if len(srcStr) >= len(tokStr) && srcStr[:len(tokStr)] == tokStr {
-			if currTok.tokType == TT_ILLEGAL || len(currTok.tokStr) < len(tokStr) {
-				currTok.tokType = tokType
-				currTok.tokStr = tokStr
-				bytesConsumed = len(tokStr)
-			}
+		if (len(srcStr) >= len(tokStr) && srcStr[:len(tokStr)] == tokStr) &&
+			(currTok.tokType == TT_ILLEGAL || len(currTok.tokStr) < len(tokStr)) {
+
+			currTok.tokType = tokType
+			currTok.tokStr = tokStr
+			bytesConsumed = len(tokStr)
+
 		}
 	}
 
