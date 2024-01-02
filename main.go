@@ -217,18 +217,6 @@ func GenerateTokens(src []byte) []TokenInfo {
 	return toks
 }
 
-type NodeType int
-
-type NodeInfo struct {
-	selfType     NodeType
-	selfChildren []NodeInfo
-}
-
-func GenerateNodes(toks TokenInfo) NodeInfo {
-	var node NodeInfo
-	return node
-}
-
 func main() {
 	data, err := os.ReadFile(os.Args[1])
 	if err != nil {
@@ -238,5 +226,6 @@ func main() {
 	data = append(data, 0x0a)
 
 	toks := GenerateTokens(data)
+
 	fmt.Println(toks)
 }
