@@ -63,40 +63,6 @@ type TokenInfo struct {
 	tokStr  string
 }
 
-var (
-	OP_NOP   byte = 1
-	OP_ECALL byte = 2
-
-	OP_ADD byte = 4
-	OP_SUB byte = 5
-	OP_XOR byte = 6
-	OP_OR  byte = 7
-	OP_AND byte = 8
-	OP_SR  byte = 9
-	OP_SL  byte = 10
-
-	OP_PUSH_LITERAL      byte = 12
-	OP_PUSH_LOCAL        byte = 13
-	OP_PUSH_GLOBAL       byte = 14
-	OP_PUSH_FUNC_ARG     byte = 15
-	OP_PUSH_FUNC_RET_VAL byte = 16
-
-	OP_POP_LITERAL      byte = 20
-	OP_POP_LOCAL        byte = 21
-	OP_POP_GLOBAL       byte = 22
-	OP_POP_FUNC_ARG     byte = 23
-	OP_POP_FUNC_RET_VAL byte = 24
-
-	OP_EQ byte = 28
-	OP_NE byte = 29
-	OP_LT byte = 30
-	OP_GE byte = 31
-
-	OP_JUMP   byte = 32
-	OP_CALL   byte = 33
-	OP_RETURN byte = 34
-)
-
 func GenerateToken(src []byte) (TokenInfo, int) {
 	var bytesConsumed int = 0
 
