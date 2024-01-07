@@ -42,16 +42,11 @@ const (
 	TT_LEQ    // <=
 	TT_GEQ    // >=
 
-	TT_LPAREN    // (
-	TT_LBRACK    // [
-	TT_LBRACE    // {
-	TT_RPAREN    // )
-	TT_RBRACK    // ]
-	TT_RBRACE    // }
-	TT_COMMA     // ,
-	TT_PERIOD    // .
-	TT_SEMICOLON // ;
-	TT_COLON     // :
+	TT_LPAREN // (
+	TT_LBRACE // {
+	TT_RPAREN // )
+	TT_RBRACE // }
+	TT_COMMA  // ,
 
 	TT_WHILE
 	TT_BREAK
@@ -166,16 +161,11 @@ func GenerateToken(src []byte) (TokenInfo, int) {
 		TT_LEQ:    "<=",
 		TT_GEQ:    ">=",
 
-		TT_LPAREN:    "(",
-		TT_LBRACK:    "[",
-		TT_LBRACE:    "{",
-		TT_RPAREN:    ")",
-		TT_RBRACK:    "]",
-		TT_RBRACE:    "}",
-		TT_COMMA:     ",",
-		TT_PERIOD:    ".",
-		TT_SEMICOLON: ";",
-		TT_COLON:     ":",
+		TT_LPAREN: "(",
+		TT_LBRACE: "{",
+		TT_RPAREN: ")",
+		TT_RBRACE: "}",
+		TT_COMMA:  ",",
 
 		TT_WHILE:    "while",
 		TT_BREAK:    "break",
