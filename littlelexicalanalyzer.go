@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"log"
-)
-
 const (
 	TT_ILLEGAL int = iota
 	TT_EOF
@@ -68,9 +63,9 @@ const (
 )
 
 type TokenData struct {
-	Kype   int
-	Offset int
-	Buf    []byte
+	Kype       int
+	LineNumber int
+	Buf        []byte
 }
 
 func checkTokenType(buf []byte) (int, int) {
@@ -243,20 +238,54 @@ func checkTokenType(buf []byte) (int, int) {
 	return tokType, bytesConsumed
 }
 
-func LexicalAnalyzer(buf []byte) {
+func checkForInvalidBytes(buf []byte) {
+	curLineNum := 1
+
+	for _, c := range buf {
+		if c == 0x0a {
+			curLineNum++
+		} else if c < 0x20 || c > 0x7e {
+			PrintFatalCompilationError(curLineNum)
+		}
+	}
+}
+
+func generateTokens(buf []byte) []TokenData {
+	curLineNum := 1
+
+	var toks []TokenData
+
 	for {
 		tokType, bytesConsumed := checkTokenType(buf)
-		fmt.Println(tokType, bytesConsumed)
+
+		if tokType == TT_ILLEGAL {
+			PrintFatalCompilationError(curLineNum)
+		}
+
+		var tok TokenData
+		tok.Kype = tokType
+		tok.LineNumber = curLineNum
+
+		if tokType == TT_INT || tokType == TT_CHAR || tokType == TT_STR {
+			tok.Buf = buf[:bytesConsumed]
+		}
+
+		toks = append(toks, tok)
 
 		if tokType == TT_EOF {
 			break
-		}
-
-		if tokType == TT_ILLEGAL {
-			log.Fatalln(string(buf))
+		} else if tokType == TT_NEW_LINE {
+			curLineNum++
 		}
 
 		buf = buf[bytesConsumed:]
+
+		// fmt.Println(tok)
 	}
 
+	return toks
+}
+func LexicalAnalyzer(buf []byte) {
+	checkForInvalidBytes(buf)
+	generateTokens(buf)
 }
