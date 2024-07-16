@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"log"
+)
+
 const (
 	TT_ILLEGAL int = iota
 	TT_EOF
@@ -66,12 +71,12 @@ type TokenData struct {
 	Buf    []byte
 }
 
-func getTokenType(buf []byte) (int, int) {
+func checkTokenType(buf []byte) (int, int) {
 	if len(buf) == 0 {
 		return TT_EOF, 0
 	} else if buf[0] == 0x0a {
 		return TT_NEW_LINE, 1
-	} else if buf[1] == 0x20 {
+	} else if buf[0] == 0x20 {
 		return TT_SPACE, 1
 	}
 
@@ -143,6 +148,7 @@ func getTokenType(buf []byte) (int, int) {
 			tokType = curTokType
 			bytesConsumed = len(curTokStr)
 			prevTokStr = curTokStr
+
 		}
 	}
 
@@ -176,11 +182,45 @@ func getTokenType(buf []byte) (int, int) {
 		}
 		bytesConsumed = i
 
+	} else if srcLine[i] == 0x22 {
+
+		for i++; i < len(srcLine); i++ {
+			if srcLine[i] == 0x22 && srcLine[i-1] != 0x5c {
+				tokType = TT_STR
+				bytesConsumed = i + 1
+				break
+			}
+		}
+
+	} else if srcLine[i] == 0x27 {
+
+		for i++; i < len(srcLine); i++ {
+			if srcLine[i] == 0x27 && srcLine[i-1] != 0x5c {
+				tokType = TT_CHAR
+				bytesConsumed = i + 1
+				break
+			}
+		}
+
 	}
 
 	return tokType, bytesConsumed
 }
 
 func LexicalAnalyzer(buf []byte) {
+	for {
+		tokType, bytesConsumed := checkTokenType(buf)
+		fmt.Println(tokType, bytesConsumed)
+
+		if tokType == TT_EOF {
+			break
+		}
+
+		if tokType == TT_ILLEGAL {
+			log.Fatalln(string(buf))
+		}
+
+		buf = buf[bytesConsumed:]
+	}
 
 }
