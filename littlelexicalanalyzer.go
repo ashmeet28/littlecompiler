@@ -190,21 +190,51 @@ func checkTokenType(buf []byte) (int, int) {
 
 	} else if srcLine[i] == 0x22 {
 
-		for i++; i < len(srcLine); i++ {
-			if srcLine[i] == 0x22 && (srcLine[i-1] != 0x5c || (i >= 2 && srcLine[i-2] == 0x5c)) {
+		i++
+		for i < len(srcLine) {
+			if srcLine[i] == 0x5c {
+				i++
+				if i < len(srcLine) {
+					if srcLine[i] == 0x5c || srcLine[i] == 0x22 {
+						i++
+					} else if srcLine[i] == 0x78 {
+						i += 3
+					} else {
+						break
+					}
+				}
+			} else if srcLine[i] == 0x22 {
+				i++
 				tokType = TT_STR
-				bytesConsumed = i + 1
+				bytesConsumed = i
 				break
+			} else {
+				i++
 			}
 		}
 
 	} else if srcLine[i] == 0x27 {
 
-		for i++; i < len(srcLine); i++ {
-			if srcLine[i] == 0x27 && (srcLine[i-1] != 0x5c || (i >= 2 && srcLine[i-2] == 0x5c)) {
+		i++
+		for i < len(srcLine) {
+			if srcLine[i] == 0x5c {
+				i++
+				if i < len(srcLine) {
+					if srcLine[i] == 0x5c || srcLine[i] == 0x27 {
+						i++
+					} else if srcLine[i] == 0x78 {
+						i += 3
+					} else {
+						break
+					}
+				}
+			} else if srcLine[i] == 0x27 {
+				i++
 				tokType = TT_CHAR
-				bytesConsumed = i + 1
+				bytesConsumed = i
 				break
+			} else {
+				i++
 			}
 		}
 
