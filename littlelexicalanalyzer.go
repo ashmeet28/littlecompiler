@@ -13,6 +13,8 @@ const (
 
 	TT_NEW_LINE
 
+	TT_COMMENT
+
 	TT_IDENT // main
 	TT_INT   // 12345
 	TT_CHAR  // 'a'
@@ -87,6 +89,10 @@ func checkTokenType(buf []byte) (int, int) {
 			srcLine = string(buf[:i])
 			break
 		}
+	}
+
+	if srcLine[0] == 0x23 {
+		return TT_COMMENT, len(srcLine)
 	}
 
 	tokType := TT_ILLEGAL
@@ -185,7 +191,7 @@ func checkTokenType(buf []byte) (int, int) {
 	} else if srcLine[i] == 0x22 {
 
 		for i++; i < len(srcLine); i++ {
-			if srcLine[i] == 0x22 && srcLine[i-1] != 0x5c {
+			if srcLine[i] == 0x22 && (srcLine[i-1] != 0x5c || (i >= 2 && srcLine[i-2] == 0x5c)) {
 				tokType = TT_STR
 				bytesConsumed = i + 1
 				break
@@ -195,7 +201,7 @@ func checkTokenType(buf []byte) (int, int) {
 	} else if srcLine[i] == 0x27 {
 
 		for i++; i < len(srcLine); i++ {
-			if srcLine[i] == 0x27 && srcLine[i-1] != 0x5c {
+			if srcLine[i] == 0x27 && (srcLine[i-1] != 0x5c || (i >= 2 && srcLine[i-2] == 0x5c)) {
 				tokType = TT_CHAR
 				bytesConsumed = i + 1
 				break
