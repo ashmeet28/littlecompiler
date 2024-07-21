@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func PrintFatalCompilationError(l int) {
+func PrintErrorAndExit(l int) {
 	s := "Compilation error"
 	if l != 0 {
 		s = s + " " + "(" + "line" + " " + strconv.FormatInt(int64(l), 10) + ")"
@@ -17,5 +17,8 @@ func PrintFatalCompilationError(l int) {
 
 func main() {
 	buf, _ := os.ReadFile(os.Args[1])
-	LexicalAnalyzer(buf)
+	toks := LexicalAnalyzer(buf)
+	for _, t := range toks {
+		fmt.Println(t)
+	}
 }

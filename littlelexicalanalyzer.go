@@ -2,6 +2,7 @@ package main
 
 const (
 	TT_ILLEGAL int = iota
+
 	TT_EOF
 
 	TT_SPACE
@@ -58,6 +59,16 @@ const (
 	TT_CONTINUE
 
 	TT_LET
+
+	TT_U8
+	TT_U16
+	TT_U32
+	TT_U64
+
+	TT_I8
+	TT_I16
+	TT_I32
+	TT_I64
 
 	TT_END
 )
@@ -192,8 +203,6 @@ func checkTokenType(buf []byte) (int, int) {
 				if i < len(srcLine) {
 					if srcLine[i] == 0x5c || srcLine[i] == 0x22 {
 						i++
-					} else if srcLine[i] == 0x78 {
-						i += 3
 					} else {
 						break
 					}
@@ -217,8 +226,6 @@ func checkTokenType(buf []byte) (int, int) {
 				if i < len(srcLine) {
 					if srcLine[i] == 0x5c || srcLine[i] == 0x27 {
 						i++
-					} else if srcLine[i] == 0x78 {
-						i += 3
 					} else {
 						break
 					}
@@ -245,9 +252,39 @@ func checkForInvalidBytes(buf []byte) {
 		if c == 0x0a {
 			curLineNum++
 		} else if c < 0x20 || c > 0x7e {
-			PrintFatalCompilationError(curLineNum)
+			PrintErrorAndExit(curLineNum)
 		}
 	}
+}
+
+func filterNewLineTokens(toks []TokenData) []TokenData {
+	var filteredToks []TokenData
+
+	var prevTok TokenData
+
+	prevTok.Kype = TT_ILLEGAL
+
+	allowedPrevTokTypes := []int{TT_IDENT,
+		TT_STR, TT_RPAREN, TT_RETURN,
+		TT_ELSE, TT_BREAK, TT_CONTINUE,
+		TT_U8, TT_U16, TT_U32, TT_U64,
+		TT_I8, TT_I16, TT_I32, TT_I64, TT_END}
+
+	for _, tok := range toks {
+		if tok.Kype == TT_NEW_LINE {
+			for _, allowedPrevTokType := range allowedPrevTokTypes {
+				if allowedPrevTokType == prevTok.Kype {
+					filteredToks = append(filteredToks, tok)
+				}
+			}
+		} else {
+			filteredToks = append(filteredToks, tok)
+		}
+
+		prevTok = tok
+	}
+
+	return filteredToks
 }
 
 func generateTokens(buf []byte) []TokenData {
@@ -259,7 +296,7 @@ func generateTokens(buf []byte) []TokenData {
 		tokType, bytesConsumed := checkTokenType(buf)
 
 		if tokType == TT_ILLEGAL {
-			PrintFatalCompilationError(curLineNum)
+			PrintErrorAndExit(curLineNum)
 		}
 
 		var tok TokenData
@@ -279,13 +316,15 @@ func generateTokens(buf []byte) []TokenData {
 		}
 
 		buf = buf[bytesConsumed:]
-
-		// fmt.Println(tok)
 	}
+
+	toks = filterNewLineTokens(toks)
 
 	return toks
 }
-func LexicalAnalyzer(buf []byte) {
+
+func LexicalAnalyzer(buf []byte) []TokenData {
 	checkForInvalidBytes(buf)
-	generateTokens(buf)
+	toks := generateTokens(buf)
+	return toks
 }
