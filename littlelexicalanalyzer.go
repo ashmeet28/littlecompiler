@@ -149,6 +149,16 @@ func checkTokenType(buf []byte) (int, int) {
 
 		TT_LET: "let",
 
+		TT_U8:  "u8",
+		TT_U16: "u16",
+		TT_U32: "u32",
+		TT_U64: "u64",
+
+		TT_I8:  "i8",
+		TT_I16: "i16",
+		TT_I32: "i32",
+		TT_I64: "i64",
+
 		TT_END: "end",
 	}
 
@@ -307,7 +317,9 @@ func generateTokens(buf []byte) []TokenData {
 			tok.Buf = buf[:bytesConsumed]
 		}
 
-		toks = append(toks, tok)
+		if tokType != TT_SPACE && tokType != TT_COMMENT {
+			toks = append(toks, tok)
+		}
 
 		if tokType == TT_EOF {
 			break
