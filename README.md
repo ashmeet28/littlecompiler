@@ -132,7 +132,7 @@ func lang_spec()
 
     if true()
         let addr u64
-        addr <- "ABC\x00\"\\"
+        addr <- "ABC\"\\"
     end
 
     if true()
@@ -163,7 +163,6 @@ func lang_spec()
         let a u8
 
         a = u8('A')
-        a = u8('\x00')
         a = u8('\'')
         a = u8('\\')
     end
