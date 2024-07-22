@@ -22,5 +22,5 @@ func main() {
 		fmt.Println(t)
 	}
 
-	fmt.Println(SyntaxAnalyzer(toks))
+	PrintTreeNode(SyntaxAnalyzer(toks), 0)
 }

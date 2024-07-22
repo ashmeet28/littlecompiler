@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type TreeNodeType int
 
 const (
@@ -10,9 +12,8 @@ const (
 	TNT_FUNC
 
 	TNT_FUNC_IDENT
-
+	TNT_FUNC_SIG
 	TNT_FUNC_PARAMS
-
 	TNT_FUNC_PARAM
 	TNT_FUNC_PARAM_IDENT
 	TNT_FUNC_PARAM_TYPE
@@ -36,12 +37,17 @@ var matchTok func(...TokenType) bool
 
 func handleFunc(ptn TreeNode) TreeNode {
 	consumeTok(TT_FUNC)
+
 	var tn TreeNode
 	tn.Kype = TNT_FUNC
+
 	tn = handleFuncIdent(tn)
-	tn = handleFuncParams(tn)
+	tn = handleFuncSig(tn)
+
 	consumeTok(TT_NEW_LINE)
 	consumeTok(TT_END)
+	consumeTok(TT_NEW_LINE)
+
 	ptn.children = append(ptn.children, tn)
 	return ptn
 }
@@ -57,21 +63,31 @@ func handleFuncIdent(ptn TreeNode) TreeNode {
 	return ptn
 }
 
-func handleFuncParams(ptn TreeNode) TreeNode {
+func handleFuncSig(ptn TreeNode) TreeNode {
 	consumeTok(TT_LPAREN)
 
+	var tn TreeNode
+	tn.Kype = TNT_FUNC_SIG
+
+	tn = handleFuncParams(tn)
+
+	consumeTok(TT_RPAREN)
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleFuncParams(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAMS
 
 	if !matchTok(TT_RPAREN) {
-		handleFuncParam(tn)
+		tn = handleFuncParam(tn)
 		for !matchTok(TT_RPAREN) {
 			consumeTok(TT_COMMA)
-			handleFuncParam(tn)
+			tn = handleFuncParam(tn)
 		}
 	}
-
-	consumeTok(TT_RPAREN)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -110,6 +126,17 @@ func handleFuncParamType(ptn TreeNode) TreeNode {
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
+}
+
+func PrintTreeNode(tn TreeNode, level int) {
+	var s string
+	for i := 0; i < level; i++ {
+		s = s + " "
+	}
+	fmt.Println(s+"|", tn.Kype, "|", tn.tok, "|")
+	for _, child := range tn.children {
+		PrintTreeNode(child, level+4)
+	}
 }
 
 func SyntaxAnalyzer(toks []TokenData) TreeNode {

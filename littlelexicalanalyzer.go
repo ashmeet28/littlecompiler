@@ -314,7 +314,8 @@ func generateTokens(buf []byte) []TokenData {
 		tok.Kype = tokType
 		tok.LineNumber = curLineNum
 
-		if tokType == TT_INT || tokType == TT_CHAR || tokType == TT_STR {
+		if tokType == TT_IDENT || tokType == TT_INT ||
+			tokType == TT_CHAR || tokType == TT_STR {
 			tok.Buf = buf[:bytesConsumed]
 		}
 
