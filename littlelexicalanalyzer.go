@@ -1,7 +1,9 @@
 package main
 
+type TokenType int
+
 const (
-	TT_ILLEGAL int = iota
+	TT_ILLEGAL TokenType = iota
 
 	TT_EOF
 
@@ -74,12 +76,12 @@ const (
 )
 
 type TokenData struct {
-	Kype       int
+	Kype       TokenType
 	LineNumber int
 	Buf        []byte
 }
 
-func checkTokenType(buf []byte) (int, int) {
+func checkTokenType(buf []byte) (TokenType, int) {
 	if len(buf) == 0 {
 		return TT_EOF, 0
 	} else if buf[0] == 0x0a {
@@ -104,7 +106,7 @@ func checkTokenType(buf []byte) (int, int) {
 	tokType := TT_ILLEGAL
 	bytesConsumed := 0
 
-	TokTypeToStr := map[int]string{
+	TokTypeToStr := map[TokenType]string{
 		TT_ADD: "+",
 		TT_SUB: "-",
 		TT_MUL: "*",
@@ -173,7 +175,6 @@ func checkTokenType(buf []byte) (int, int) {
 
 		}
 	}
-
 	if tokType != TT_ILLEGAL {
 		return tokType, bytesConsumed
 	}
@@ -274,7 +275,7 @@ func filterNewLineTokens(toks []TokenData) []TokenData {
 
 	prevTok.Kype = TT_ILLEGAL
 
-	allowedPrevTokTypes := []int{TT_IDENT,
+	allowedPrevTokTypes := []TokenType{TT_IDENT,
 		TT_STR, TT_RPAREN, TT_RETURN,
 		TT_ELSE, TT_BREAK, TT_CONTINUE,
 		TT_U8, TT_U16, TT_U32, TT_U64,
