@@ -19,7 +19,7 @@ const (
 	TNT_FUNC_PARAM_TYPE
 
 	TNT_STMTS
-
+	TNT_STMT
 	TNT_STMT_DECL
 	TNT_STMT_DECL_IDENT
 	TNT_STMT_DECL_TYPE
@@ -152,7 +152,19 @@ func handleStmts(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMTS
 
-	if peekTok().Kype == TT_LET {
+	for matchTok(TT_LET) {
+		tn = handleStmt(tn)
+	}
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleStmt(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT
+
+	if matchTok(TT_LET) {
 		tn = handleDeclStmt(tn)
 	}
 
