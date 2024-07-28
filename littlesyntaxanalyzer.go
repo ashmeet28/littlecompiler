@@ -10,7 +10,6 @@ const (
 	TNT_ROOT
 
 	TNT_FUNC
-
 	TNT_FUNC_IDENT
 	TNT_FUNC_SIG
 	TNT_FUNC_PARAMS
@@ -133,7 +132,7 @@ func PrintTreeNode(tn TreeNode, level int) {
 	for i := 0; i < level; i++ {
 		s = s + " "
 	}
-	fmt.Println(s+"|", tn.Kype, "|", tn.tok, "|")
+	fmt.Println(s, "|->", tn.Kype, tn.tok)
 	for _, child := range tn.children {
 		PrintTreeNode(child, level+4)
 	}

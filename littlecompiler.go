@@ -18,9 +18,10 @@ func PrintErrorAndExit(l int) {
 func main() {
 	buf, _ := os.ReadFile(os.Args[1])
 	toks := LexicalAnalyzer(append(buf, 0x0a))
-	for _, t := range toks {
-		fmt.Println(t)
-	}
+
+	// for _, t := range toks {
+	// 	fmt.Println(t)
+	// }
 
 	PrintTreeNode(SyntaxAnalyzer(toks), 0)
 }
