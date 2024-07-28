@@ -16,6 +16,12 @@ const (
 	TNT_FUNC_PARAM
 	TNT_FUNC_PARAM_IDENT
 	TNT_FUNC_PARAM_TYPE
+
+	TNT_STMTS
+
+	TNT_STMT_DECL
+	TNT_STMT_DECL_IDENT
+	TNT_STMT_DECL_TYPE
 )
 
 type TreeNode struct {
@@ -44,6 +50,9 @@ func handleFunc(ptn TreeNode) TreeNode {
 	tn = handleFuncSig(tn)
 
 	consumeTok(TT_NEW_LINE)
+
+	tn = handleStmts(tn)
+
 	consumeTok(TT_END)
 	consumeTok(TT_NEW_LINE)
 
@@ -68,7 +77,9 @@ func handleFuncSig(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_SIG
 
-	tn = handleFuncParams(tn)
+	if matchTok(TT_IDENT) {
+		tn = handleFuncParams(tn)
+	}
 
 	consumeTok(TT_RPAREN)
 
@@ -80,12 +91,10 @@ func handleFuncParams(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAMS
 
-	if !matchTok(TT_RPAREN) {
+	tn = handleFuncParam(tn)
+	for matchTok(TT_COMMA) {
+		consumeTok(TT_COMMA)
 		tn = handleFuncParam(tn)
-		for !matchTok(TT_RPAREN) {
-			consumeTok(TT_COMMA)
-			tn = handleFuncParam(tn)
-		}
 	}
 
 	ptn.children = append(ptn.children, tn)
@@ -127,12 +136,64 @@ func handleFuncParamType(ptn TreeNode) TreeNode {
 	return ptn
 }
 
+func handleStmts(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMTS
+
+	if peekTok().Kype == TT_LET {
+		tn = handleDeclStmt(tn)
+	}
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleDeclStmt(ptn TreeNode) TreeNode {
+	consumeTok(TT_LET)
+
+	var tn TreeNode
+	tn.Kype = TNT_STMT_DECL
+
+	tn = handleDeclStmtIdent(tn)
+	tn = handleDeclStmtType(tn)
+	consumeTok(TT_NEW_LINE)
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleDeclStmtIdent(ptn TreeNode) TreeNode {
+	tok := consumeTok(TT_IDENT)
+
+	var tn TreeNode
+	tn.Kype = TNT_STMT_DECL_IDENT
+	tn.tok = tok
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleDeclStmtType(ptn TreeNode) TreeNode {
+	if !matchTok(TT_U8, TT_U16, TT_U32, TT_U64, TT_I8, TT_I16, TT_I32, TT_I64) {
+		PrintErrorAndExit(peekTok().LineNumber)
+	}
+
+	var tn TreeNode
+	tn.Kype = TNT_STMT_DECL_TYPE
+	tn.tok = advanceTok()
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
 func PrintTreeNode(tn TreeNode, level int) {
 	var s string
 	for i := 0; i < level; i++ {
 		s = s + " "
 	}
-	fmt.Println(s, "|->", tn.Kype, tn.tok)
+
+	fmt.Println(s, "->", tn.Kype, tn.tok)
+
 	for _, child := range tn.children {
 		PrintTreeNode(child, level+4)
 	}
