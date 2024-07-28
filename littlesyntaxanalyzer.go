@@ -9,6 +9,7 @@ const (
 
 	TNT_ROOT
 
+	TNT_FUNCS
 	TNT_FUNC
 	TNT_FUNC_IDENT
 	TNT_FUNC_SIG
@@ -30,8 +31,6 @@ type TreeNode struct {
 	tok      TokenData
 }
 
-var tokFunc map[int]func(TreeNode) TreeNode
-
 var peekTok func() TokenData
 
 var advanceTok func() TokenData
@@ -39,6 +38,19 @@ var advanceTok func() TokenData
 var consumeTok func(TokenType) TokenData
 
 var matchTok func(...TokenType) bool
+
+func handleFuncs(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_FUNCS
+
+	for matchTok(TT_FUNC) {
+		tn = handleFunc(tn)
+	}
+	consumeTok(TT_EOF)
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
 
 func handleFunc(ptn TreeNode) TreeNode {
 	consumeTok(TT_FUNC)
@@ -241,11 +253,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 		return false
 	}
 
-	for len(toks) > 1 {
-		rootTreeNode = handleFunc(rootTreeNode)
-	}
-
-	consumeTok(TT_EOF)
+	rootTreeNode = handleFuncs(rootTreeNode)
 
 	return rootTreeNode
 }
