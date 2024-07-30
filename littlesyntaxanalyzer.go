@@ -224,9 +224,9 @@ func PrintTreeNode(tn TreeNode, level int) {
 }
 
 func SyntaxAnalyzer(toks []TokenData) TreeNode {
-	var rootTreeNode TreeNode
+	var tn TreeNode
 
-	rootTreeNode.Kype = TNT_ROOT
+	tn.Kype = TNT_ROOT
 
 	peekTok = func() TokenData {
 		if len(toks) == 0 {
@@ -265,7 +265,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 		return false
 	}
 
-	rootTreeNode = handleFuncs(rootTreeNode)
+	tn = handleFuncs(tn)
 
-	return rootTreeNode
+	return tn
 }
