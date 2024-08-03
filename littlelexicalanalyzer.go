@@ -62,16 +62,6 @@ const (
 
 	TT_LET
 
-	TT_U8
-	TT_U16
-	TT_U32
-	TT_U64
-
-	TT_I8
-	TT_I16
-	TT_I32
-	TT_I64
-
 	TT_END
 )
 
@@ -150,16 +140,6 @@ func checkTokenType(buf []byte) (TokenType, int) {
 		TT_CONTINUE: "continue",
 
 		TT_LET: "let",
-
-		TT_U8:  "u8",
-		TT_U16: "u16",
-		TT_U32: "u32",
-		TT_U64: "u64",
-
-		TT_I8:  "i8",
-		TT_I16: "i16",
-		TT_I32: "i32",
-		TT_I64: "i64",
 
 		TT_END: "end",
 	}
@@ -278,8 +258,7 @@ func filterNewLineTokens(toks []TokenData) []TokenData {
 	allowedPrevTokTypes := []TokenType{TT_IDENT,
 		TT_STR, TT_RPAREN, TT_RETURN,
 		TT_ELSE, TT_BREAK, TT_CONTINUE,
-		TT_U8, TT_U16, TT_U32, TT_U64,
-		TT_I8, TT_I16, TT_I32, TT_I64, TT_END}
+		TT_END}
 
 	for _, tok := range toks {
 		if tok.Kype == TT_NEW_LINE {

@@ -23,6 +23,10 @@ const (
 	TNT_STMT_DECL
 	TNT_STMT_DECL_IDENT
 	TNT_STMT_DECL_TYPE
+	TNT_STMT_EXPR
+	TNT_STMT_ASSIGN
+
+	TNT_EXPR
 )
 
 type TreeNode struct {
@@ -136,13 +140,9 @@ func handleFuncParamIdent(ptn TreeNode) TreeNode {
 }
 
 func handleFuncParamType(ptn TreeNode) TreeNode {
-	if !matchTok(TT_U8, TT_U16, TT_U32, TT_U64, TT_I8, TT_I16, TT_I32, TT_I64) {
-		PrintErrorAndExit(peekTok().LineNumber)
-	}
-
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM_TYPE
-	tn.tok = advanceTok()
+	tn.tok = consumeTok(TT_IDENT)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -152,7 +152,7 @@ func handleStmts(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMTS
 
-	for matchTok(TT_LET) {
+	for matchTok(TT_LET, TT_IDENT) {
 		tn = handleStmt(tn)
 	}
 
@@ -198,13 +198,9 @@ func handleDeclStmtIdent(ptn TreeNode) TreeNode {
 }
 
 func handleDeclStmtType(ptn TreeNode) TreeNode {
-	if !matchTok(TT_U8, TT_U16, TT_U32, TT_U64, TT_I8, TT_I16, TT_I32, TT_I64) {
-		PrintErrorAndExit(peekTok().LineNumber)
-	}
-
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_TYPE
-	tn.tok = advanceTok()
+	tn.tok = consumeTok(TT_IDENT)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
