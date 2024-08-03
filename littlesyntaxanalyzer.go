@@ -11,6 +11,7 @@ const (
 
 	TNT_FUNCS
 	TNT_FUNC
+
 	TNT_FUNC_IDENT
 	TNT_FUNC_SIG
 	TNT_FUNC_PARAMS
@@ -20,13 +21,16 @@ const (
 
 	TNT_STMTS
 	TNT_STMT
+
 	TNT_STMT_DECL
 	TNT_STMT_DECL_IDENT
 	TNT_STMT_DECL_TYPE
+
 	TNT_STMT_EXPR
 	TNT_STMT_ASSIGN
 
 	TNT_EXPR
+	TNT_EXPR_VAR
 )
 
 type TreeNode struct {
@@ -166,7 +170,11 @@ func handleStmt(ptn TreeNode) TreeNode {
 
 	if matchTok(TT_LET) {
 		tn = handleDeclStmt(tn)
+	} else {
+		tn = handleExpr(tn)
 	}
+
+	consumeTok(TT_NEW_LINE)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -180,7 +188,6 @@ func handleDeclStmt(ptn TreeNode) TreeNode {
 
 	tn = handleDeclStmtIdent(tn)
 	tn = handleDeclStmtType(tn)
-	consumeTok(TT_NEW_LINE)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -200,6 +207,48 @@ func handleDeclStmtIdent(ptn TreeNode) TreeNode {
 func handleDeclStmtType(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_TYPE
+	tn.tok = consumeTok(TT_IDENT)
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleExpr(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR
+
+	if matchTok(TT_LPAREN) {
+		tn = handleExprGrouping(tn)
+	} else {
+		tn = handleExprUnary(tn)
+	}
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
+}
+
+func handleExprGrouping(ptn TreeNode) TreeNode {
+	consumeTok(TT_LPAREN)
+	if matchTok(TT_LPAREN) {
+		ptn = handleExprGrouping(ptn)
+	} else {
+		ptn = handleExprUnary(ptn)
+	}
+	consumeTok(TT_RPAREN)
+	return ptn
+}
+
+func handleExprMatchBinaryOp() bool {
+	return matchTok(TT_ADD, TT_SUB, TT_MUL, TT_QUO, TT_REM,
+		TT_AND, TT_OR, TT_XOR,
+		TT_SHL, TT_SHR,
+		TT_LAND, TT_LOR,
+		TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
+}
+
+func handleExprUnary(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_VAR
 	tn.tok = consumeTok(TT_IDENT)
 
 	ptn.children = append(ptn.children, tn)
