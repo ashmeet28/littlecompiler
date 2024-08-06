@@ -237,10 +237,8 @@ func handleExpr(ptn TreeNode, doesFollowBinary bool) TreeNode {
 		tn = handleExprUnary(tn)
 	}
 
-	if doesFollowBinary {
-		for matchBinaryTok() {
-			tn = handleExprBinary(tn)
-		}
+	for doesFollowBinary && matchBinaryTok() {
+		tn = handleExprBinary(tn)
 	}
 
 	ptn.children = append(ptn.children, tn)
@@ -259,12 +257,6 @@ func handleExprUnary(ptn TreeNode) TreeNode {
 func handleExprBinary(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_EXPR_BINARY
-
-	if matchBinaryTok() {
-		tn.tok = advanceTok()
-	} else {
-		PrintErrorAndExit(peekTok().LineNumber)
-	}
 
 	tn.children = append(tn.children, ptn)
 	tn = handleExpr(tn, false)
