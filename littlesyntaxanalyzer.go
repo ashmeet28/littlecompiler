@@ -257,6 +257,7 @@ func handleExprUnary(ptn TreeNode) TreeNode {
 func handleExprBinary(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_EXPR_BINARY
+	tn.tok = advanceTok()
 
 	tn.children = append(tn.children, ptn)
 	tn = handleExpr(tn, false)
