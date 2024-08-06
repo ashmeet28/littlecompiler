@@ -31,6 +31,7 @@ const (
 
 	TNT_EXPR
 	TNT_EXPR_VAR
+	TNT_EXPR_BINARY
 )
 
 type TreeNode struct {
@@ -46,6 +47,8 @@ var advanceTok func() TokenData
 var consumeTok func(TokenType) TokenData
 
 var matchTok func(...TokenType) bool
+
+var matchBinaryTok func() bool
 
 func handleFuncs(ptn TreeNode) TreeNode {
 	var tn TreeNode
@@ -156,7 +159,7 @@ func handleStmts(ptn TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMTS
 
-	for matchTok(TT_LET, TT_IDENT) {
+	for matchTok(TT_LET, TT_IDENT, TT_LPAREN) {
 		tn = handleStmt(tn)
 	}
 
@@ -171,7 +174,7 @@ func handleStmt(ptn TreeNode) TreeNode {
 	if matchTok(TT_LET) {
 		tn = handleDeclStmt(tn)
 	} else {
-		tn = handleExpr(tn)
+		tn = handleExprStmt(tn)
 	}
 
 	consumeTok(TT_NEW_LINE)
@@ -213,37 +216,35 @@ func handleDeclStmtType(ptn TreeNode) TreeNode {
 	return ptn
 }
 
-func handleExpr(ptn TreeNode) TreeNode {
+func handleExprStmt(ptn TreeNode) TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_EXPR
-
-	if matchTok(TT_LPAREN) {
-		tn = handleExprGrouping(tn)
-	} else {
-		tn = handleExprUnary(tn)
-	}
+	tn.Kype = TNT_STMT_EXPR
+	tn = handleExpr(tn, true)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
 }
 
-func handleExprGrouping(ptn TreeNode) TreeNode {
-	consumeTok(TT_LPAREN)
-	if matchTok(TT_LPAREN) {
-		ptn = handleExprGrouping(ptn)
-	} else {
-		ptn = handleExprUnary(ptn)
-	}
-	consumeTok(TT_RPAREN)
-	return ptn
-}
+func handleExpr(ptn TreeNode, doesFollowBinary bool) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR
 
-func handleExprMatchBinaryOp() bool {
-	return matchTok(TT_ADD, TT_SUB, TT_MUL, TT_QUO, TT_REM,
-		TT_AND, TT_OR, TT_XOR,
-		TT_SHL, TT_SHR,
-		TT_LAND, TT_LOR,
-		TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
+	if matchTok(TT_LPAREN) {
+		consumeTok(TT_LPAREN)
+		tn = handleExpr(tn, true)
+		consumeTok(TT_RPAREN)
+	} else {
+		tn = handleExprUnary(tn)
+	}
+
+	if doesFollowBinary {
+		for matchBinaryTok() {
+			tn = handleExprBinary(tn)
+		}
+	}
+
+	ptn.children = append(ptn.children, tn)
+	return ptn
 }
 
 func handleExprUnary(ptn TreeNode) TreeNode {
@@ -253,6 +254,21 @@ func handleExprUnary(ptn TreeNode) TreeNode {
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
+}
+
+func handleExprBinary(ptn TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_BINARY
+
+	if matchBinaryTok() {
+		tn.tok = advanceTok()
+	} else {
+		PrintErrorAndExit(peekTok().LineNumber)
+	}
+
+	tn.children = append(tn.children, ptn)
+	tn = handleExpr(tn, false)
+	return tn
 }
 
 func PrintTreeNode(tn TreeNode, level int) {
@@ -308,6 +324,14 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 			}
 		}
 		return false
+	}
+
+	matchBinaryTok = func() bool {
+		return matchTok(TT_ADD, TT_SUB, TT_MUL, TT_QUO, TT_REM,
+			TT_AND, TT_OR, TT_XOR,
+			TT_SHL, TT_SHR,
+			TT_LAND, TT_LOR,
+			TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
 	}
 
 	tn = handleFuncs(tn)
