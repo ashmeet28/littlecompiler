@@ -174,10 +174,12 @@ func handleStmt(ptn TreeNode) TreeNode {
 	if matchTok(TT_LET) {
 		tn = handleDeclStmt(tn)
 	} else {
-		tn = handleExprStmt(tn)
-	}
+		exprTreeNode := handleExprWithoutParent()
 
-	consumeTok(TT_NEW_LINE)
+		if matchTok(TT_NEW_LINE) {
+			tn.children = append(tn.children, handleExprStmtWithoutParent(exprTreeNode))
+		}
+	}
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -191,6 +193,8 @@ func handleDeclStmt(ptn TreeNode) TreeNode {
 
 	tn = handleDeclStmtIdent(tn)
 	tn = handleDeclStmtType(tn)
+
+	consumeTok(TT_NEW_LINE)
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
@@ -216,13 +220,14 @@ func handleDeclStmtType(ptn TreeNode) TreeNode {
 	return ptn
 }
 
-func handleExprStmt(ptn TreeNode) TreeNode {
+func handleExprStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_EXPR
-	tn = handleExpr(tn, true)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	consumeTok(TT_NEW_LINE)
+
+	tn.children = append(tn.children, exprTreeNode)
+	return tn
 }
 
 func handleExpr(ptn TreeNode, doesFollowBinary bool) TreeNode {
@@ -243,6 +248,13 @@ func handleExpr(ptn TreeNode, doesFollowBinary bool) TreeNode {
 
 	ptn.children = append(ptn.children, tn)
 	return ptn
+}
+
+func handleExprWithoutParent() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR
+	tn = handleExpr(tn, true)
+	return tn
 }
 
 func handleExprUnary(ptn TreeNode) TreeNode {
