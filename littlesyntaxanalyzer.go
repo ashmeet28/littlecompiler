@@ -178,6 +178,8 @@ func handleStmt(ptn TreeNode) TreeNode {
 
 		if matchTok(TT_NEW_LINE) {
 			tn.children = append(tn.children, handleExprStmtWithoutParent(exprTreeNode))
+		} else if matchTok(TT_ASSIGN) {
+			tn.children = append(tn.children, handleAssignStmtWithoutParent(exprTreeNode))
 		}
 	}
 
@@ -227,6 +229,15 @@ func handleExprStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
 	consumeTok(TT_NEW_LINE)
 
 	tn.children = append(tn.children, exprTreeNode)
+	return tn
+}
+
+func handleAssignStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_ASSIGN
+	consumeTok(TT_ASSIGN)
+	tn.children = append(tn.children, exprTreeNode, handleExprWithoutParent())
+	consumeTok(TT_NEW_LINE)
 	return tn
 }
 
