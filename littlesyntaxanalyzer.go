@@ -9,17 +9,17 @@ const (
 
 	TNT_ROOT
 
-	TNT_FUNCS
+	TNT_FUNC_LIST
 	TNT_FUNC
 
 	TNT_FUNC_IDENT
 	TNT_FUNC_SIG
-	TNT_FUNC_PARAMS
+	TNT_FUNC_PARAM_LIST
 	TNT_FUNC_PARAM
 	TNT_FUNC_PARAM_IDENT
 	TNT_FUNC_PARAM_TYPE
 
-	TNT_STMTS
+	TNT_STMT_LIST
 	TNT_STMT
 
 	TNT_STMT_DECL
@@ -52,7 +52,7 @@ var matchBinaryTok func() bool
 
 func handleFuncs(ptn TreeNode) TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_FUNCS
+	tn.Kype = TNT_FUNC_LIST
 
 	for matchTok(TT_FUNC) {
 		tn = handleFunc(tn)
@@ -112,7 +112,7 @@ func handleFuncSig(ptn TreeNode) TreeNode {
 
 func handleFuncParams(ptn TreeNode) TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_FUNC_PARAMS
+	tn.Kype = TNT_FUNC_PARAM_LIST
 
 	tn = handleFuncParam(tn)
 	for matchTok(TT_COMMA) {
@@ -157,7 +157,7 @@ func handleFuncParamType(ptn TreeNode) TreeNode {
 
 func handleStmts(ptn TreeNode) TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_STMTS
+	tn.Kype = TNT_STMT_LIST
 
 	for matchTok(TT_LET, TT_IDENT, TT_LPAREN) {
 		tn = handleStmt(tn)
