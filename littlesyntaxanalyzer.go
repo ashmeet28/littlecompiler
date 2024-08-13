@@ -218,9 +218,21 @@ func handleExprStmt(exprTreeNode TreeNode) TreeNode {
 func handleAssignStmt(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_ASSIGN
+
 	consumeTok(TT_ASSIGN)
-	tn.children = append(tn.children, exprTreeNode, handleExpr())
+
+	tn.children = append(tn.children, exprTreeNode)
+	tn.children = append(tn.children, handleExpr())
+
 	consumeTok(TT_NEW_LINE)
+	return tn
+}
+
+func handleExpr() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR
+	tn.children = append(tn.children, handleExprCont(true))
+
 	return tn
 }
 
@@ -234,20 +246,13 @@ func handleExprCont(doesFollowBinary bool) TreeNode {
 	return tn
 }
 
-func handleExpr() TreeNode {
-	var tn TreeNode
-	tn.Kype = TNT_EXPR
-	tn.children = append(tn.children, handleExprCont(true))
-	return tn
-}
-
 func handleExprUnary() TreeNode {
 	var tn TreeNode
 
 	if matchTok(TT_IDENT) {
 		tn.Kype = TNT_EXPR_VAR
 		tn.tok = consumeTok(TT_IDENT)
-	} else if matchTok(TT_LPAREN) {
+	} else {
 		consumeTok(TT_LPAREN)
 		tn = handleExprCont(true)
 		consumeTok(TT_RPAREN)
