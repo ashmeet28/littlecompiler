@@ -274,13 +274,12 @@ func handleExprUnaryFuncParmList() TreeNode {
 
 	consumeTok(TT_LPAREN)
 
-	if matchTok(TT_LPAREN, TT_IDENT) {
+	if matchTok(TT_LPAREN, TT_IDENT, TT_INT, TT_CHAR) {
 		tn.children = append(tn.children, handleExprUnaryFuncParm())
-	}
-
-	for matchTok(TT_COMMA) {
-		consumeTok(TT_COMMA)
-		tn.children = append(tn.children, handleExprUnaryFuncParm())
+		for matchTok(TT_COMMA) {
+			consumeTok(TT_COMMA)
+			tn.children = append(tn.children, handleExprUnaryFuncParm())
+		}
 	}
 
 	consumeTok(TT_RPAREN)
@@ -292,8 +291,28 @@ func handleExprUnaryFuncParm() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_EXPR_FUNC_PARM
 
-	tn.children = append(tn.children, handleExpr())
+	if matchTok(TT_INT) {
+		tn.children = append(tn.children, handleExprUnaryFuncParmInt())
+	} else if matchTok(TT_CHAR) {
+		tn.children = append(tn.children, handleExprUnaryFuncParmChar())
+	} else {
+		tn.children = append(tn.children, handleExpr())
+	}
 
+	return tn
+}
+
+func handleExprUnaryFuncParmInt() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_INT
+	tn.tok = consumeTok(TT_INT)
+	return tn
+}
+
+func handleExprUnaryFuncParmChar() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_CHAR
+	tn.tok = consumeTok(TT_CHAR)
 	return tn
 }
 
