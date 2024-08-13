@@ -274,7 +274,7 @@ func handleExprUnaryFuncParmList() TreeNode {
 
 	consumeTok(TT_LPAREN)
 
-	if matchTok(TT_LPAREN, TT_IDENT, TT_INT, TT_CHAR) {
+	if matchTok(TT_IDENT, TT_LPAREN, TT_INT, TT_CHAR) {
 		tn.children = append(tn.children, handleExprUnaryFuncParm())
 		for matchTok(TT_COMMA) {
 			consumeTok(TT_COMMA)
