@@ -283,6 +283,7 @@ func handleElseStmt() TreeNode {
 	tn.Kype = TNT_ELSE
 
 	consumeTok(TT_ELSE)
+
 	if matchTok(TT_IF) {
 		tn.Children = append(tn.Children, handleStmtList())
 	} else {
@@ -293,6 +294,7 @@ func handleElseStmt() TreeNode {
 		consumeTok(TT_END)
 		consumeTok(TT_NEW_LINE)
 	}
+
 	return tn
 }
 
