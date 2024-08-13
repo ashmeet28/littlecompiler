@@ -30,7 +30,7 @@ const (
 	TNT_STMT_ASSIGN
 
 	TNT_EXPR
-	TNT_EXPR_VAR
+	TNT_EXPR_VAR_IDENT
 	TNT_EXPR_BINARY
 )
 
@@ -270,7 +270,7 @@ func handleExprWithoutParent() TreeNode {
 
 func handleExprUnary(ptn TreeNode) TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_EXPR_VAR
+	tn.Kype = TNT_EXPR_VAR_IDENT
 	tn.tok = consumeTok(TT_IDENT)
 
 	ptn.children = append(ptn.children, tn)
