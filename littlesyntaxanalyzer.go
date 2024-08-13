@@ -32,6 +32,8 @@ const (
 	TNT_EXPR
 	TNT_EXPR_VAR
 	TNT_EXPR_FUNC
+	TNT_EXPR_FUNC_PARM_LIST
+	TNT_EXPR_FUNC_PARM
 	TNT_EXPR_INT
 	TNT_EXPR_CHAR
 	TNT_EXPR_BINARY
@@ -53,7 +55,7 @@ var matchTok func(...TokenType) bool
 
 var matchBinaryTok func() bool
 
-func handleFuncs() TreeNode {
+func handleFuncList() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_LIST
 
@@ -76,7 +78,7 @@ func handleFunc() TreeNode {
 
 	consumeTok(TT_NEW_LINE)
 
-	tn.children = append(tn.children, handleStmts())
+	tn.children = append(tn.children, handleStmtList())
 
 	consumeTok(TT_END)
 	consumeTok(TT_NEW_LINE)
@@ -99,7 +101,7 @@ func handleFuncSig() TreeNode {
 	tn.Kype = TNT_FUNC_SIG
 
 	if matchTok(TT_IDENT) {
-		tn.children = append(tn.children, handleFuncParams())
+		tn.children = append(tn.children, handleFuncParamList())
 	}
 
 	consumeTok(TT_RPAREN)
@@ -107,7 +109,7 @@ func handleFuncSig() TreeNode {
 	return tn
 }
 
-func handleFuncParams() TreeNode {
+func handleFuncParamList() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM_LIST
 
@@ -145,7 +147,7 @@ func handleFuncParamType() TreeNode {
 	return tn
 }
 
-func handleStmts() TreeNode {
+func handleStmtList() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_LIST
 
@@ -250,13 +252,47 @@ func handleExprUnary() TreeNode {
 	var tn TreeNode
 
 	if matchTok(TT_IDENT) {
-		tn.Kype = TNT_EXPR_VAR
 		tn.tok = consumeTok(TT_IDENT)
+		if matchTok(TT_LPAREN) {
+			tn.Kype = TNT_EXPR_FUNC
+			tn.children = append(tn.children, handleExprUnaryFuncParmList())
+		} else {
+			tn.Kype = TNT_EXPR_VAR
+		}
 	} else {
 		consumeTok(TT_LPAREN)
 		tn = handleExprCont(true)
 		consumeTok(TT_RPAREN)
 	}
+
+	return tn
+}
+
+func handleExprUnaryFuncParmList() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_FUNC_PARM_LIST
+
+	consumeTok(TT_LPAREN)
+
+	if matchTok(TT_LPAREN, TT_IDENT) {
+		tn.children = append(tn.children, handleExprUnaryFuncParm())
+	}
+
+	for matchTok(TT_COMMA) {
+		consumeTok(TT_COMMA)
+		tn.children = append(tn.children, handleExprUnaryFuncParm())
+	}
+
+	consumeTok(TT_RPAREN)
+
+	return tn
+}
+
+func handleExprUnaryFuncParm() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_FUNC_PARM
+
+	tn.children = append(tn.children, handleExpr())
 
 	return tn
 }
@@ -334,7 +370,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 			TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
 	}
 
-	tn.children = append(tn.children, handleFuncs())
+	tn.children = append(tn.children, handleFuncList())
 
 	return tn
 }
