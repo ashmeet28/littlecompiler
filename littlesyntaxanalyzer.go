@@ -30,7 +30,10 @@ const (
 	TNT_STMT_ASSIGN
 
 	TNT_EXPR
-	TNT_EXPR_VAR_IDENT
+	TNT_EXPR_VAR
+	TNT_EXPR_FUNC
+	TNT_EXPR_INT
+	TNT_EXPR_CHAR
 	TNT_EXPR_BINARY
 )
 
@@ -50,179 +53,159 @@ var matchTok func(...TokenType) bool
 
 var matchBinaryTok func() bool
 
-func handleFuncs(ptn TreeNode) TreeNode {
+func handleFuncs() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_LIST
 
 	for matchTok(TT_FUNC) {
-		tn = handleFunc(tn)
+		tn.children = append(tn.children, handleFunc())
 	}
 	consumeTok(TT_EOF)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFunc(ptn TreeNode) TreeNode {
+func handleFunc() TreeNode {
 	consumeTok(TT_FUNC)
 
 	var tn TreeNode
 	tn.Kype = TNT_FUNC
 
-	tn = handleFuncIdent(tn)
-	tn = handleFuncSig(tn)
+	tn.children = append(tn.children, handleFuncIdent())
+	tn.children = append(tn.children, handleFuncSig())
 
 	consumeTok(TT_NEW_LINE)
 
-	tn = handleStmts(tn)
+	tn.children = append(tn.children, handleStmts())
 
 	consumeTok(TT_END)
 	consumeTok(TT_NEW_LINE)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFuncIdent(ptn TreeNode) TreeNode {
-	tok := consumeTok(TT_IDENT)
-
+func handleFuncIdent() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_IDENT
-	tn.tok = tok
+	tn.tok = consumeTok(TT_IDENT)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFuncSig(ptn TreeNode) TreeNode {
+func handleFuncSig() TreeNode {
 	consumeTok(TT_LPAREN)
 
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_SIG
 
 	if matchTok(TT_IDENT) {
-		tn = handleFuncParams(tn)
+		tn.children = append(tn.children, handleFuncParams())
 	}
 
 	consumeTok(TT_RPAREN)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFuncParams(ptn TreeNode) TreeNode {
+func handleFuncParams() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM_LIST
 
-	tn = handleFuncParam(tn)
+	tn.children = append(tn.children, handleFuncParam())
 	for matchTok(TT_COMMA) {
 		consumeTok(TT_COMMA)
-		tn = handleFuncParam(tn)
+		tn.children = append(tn.children, handleFuncParam())
 	}
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFuncParam(ptn TreeNode) TreeNode {
+func handleFuncParam() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM
 
-	tn = handleFuncParamIdent(tn)
-	tn = handleFuncParamType(tn)
+	tn.children = append(tn.children, handleFuncParamIdent())
+	tn.children = append(tn.children, handleFuncParamType())
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleFuncParamIdent(ptn TreeNode) TreeNode {
-	tok := consumeTok(TT_IDENT)
-
+func handleFuncParamIdent() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM_IDENT
-	tn.tok = tok
-
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	tn.tok = consumeTok(TT_IDENT)
+	return tn
 }
 
-func handleFuncParamType(ptn TreeNode) TreeNode {
+func handleFuncParamType() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_FUNC_PARAM_TYPE
 	tn.tok = consumeTok(TT_IDENT)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleStmts(ptn TreeNode) TreeNode {
+func handleStmts() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_LIST
 
 	for matchTok(TT_LET, TT_IDENT, TT_LPAREN) {
-		tn = handleStmt(tn)
+		tn.children = append(tn.children, handleStmt())
 	}
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleStmt(ptn TreeNode) TreeNode {
+func handleStmt() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT
 
 	if matchTok(TT_LET) {
-		tn = handleDeclStmt(tn)
+		tn.children = append(tn.children, handleDeclStmt())
 	} else {
-		exprTreeNode := handleExprWithoutParent()
+		exprTreeNode := handleExpr()
 
 		if matchTok(TT_NEW_LINE) {
-			tn.children = append(tn.children, handleExprStmtWithoutParent(exprTreeNode))
+			tn.children = append(tn.children, handleExprStmt(exprTreeNode))
 		} else if matchTok(TT_ASSIGN) {
-			tn.children = append(tn.children, handleAssignStmtWithoutParent(exprTreeNode))
+			tn.children = append(tn.children, handleAssignStmt(exprTreeNode))
 		}
 	}
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleDeclStmt(ptn TreeNode) TreeNode {
+func handleDeclStmt() TreeNode {
 	consumeTok(TT_LET)
 
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL
 
-	tn = handleDeclStmtIdent(tn)
-	tn = handleDeclStmtType(tn)
+	tn.children = append(tn.children, handleDeclStmtIdent())
+	tn.children = append(tn.children, handleDeclStmtType())
 
 	consumeTok(TT_NEW_LINE)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleDeclStmtIdent(ptn TreeNode) TreeNode {
-	tok := consumeTok(TT_IDENT)
-
+func handleDeclStmtIdent() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_IDENT
-	tn.tok = tok
+	tn.tok = consumeTok(TT_IDENT)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleDeclStmtType(ptn TreeNode) TreeNode {
+func handleDeclStmtType() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_TYPE
 	tn.tok = consumeTok(TT_IDENT)
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	return tn
 }
 
-func handleExprStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
+func handleExprStmt(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_EXPR
 
@@ -232,58 +215,54 @@ func handleExprStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
 	return tn
 }
 
-func handleAssignStmtWithoutParent(exprTreeNode TreeNode) TreeNode {
+func handleAssignStmt(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_ASSIGN
 	consumeTok(TT_ASSIGN)
-	tn.children = append(tn.children, exprTreeNode, handleExprWithoutParent())
+	tn.children = append(tn.children, exprTreeNode, handleExpr())
 	consumeTok(TT_NEW_LINE)
 	return tn
 }
 
-func handleExpr(ptn TreeNode, doesFollowBinary bool) TreeNode {
-	var tn TreeNode
-	tn.Kype = TNT_EXPR
-
-	if matchTok(TT_LPAREN) {
-		consumeTok(TT_LPAREN)
-		tn = handleExpr(tn, true)
-		consumeTok(TT_RPAREN)
-	} else {
-		tn = handleExprUnary(tn)
-	}
+func handleExprCont(doesFollowBinary bool) TreeNode {
+	tn := handleExprUnary()
 
 	for doesFollowBinary && matchBinaryTok() {
 		tn = handleExprBinary(tn)
 	}
 
-	ptn.children = append(ptn.children, tn)
-	return ptn
-}
-
-func handleExprWithoutParent() TreeNode {
-	var tn TreeNode
-	tn.Kype = TNT_EXPR
-	tn = handleExpr(tn, true)
 	return tn
 }
 
-func handleExprUnary(ptn TreeNode) TreeNode {
+func handleExpr() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_EXPR_VAR_IDENT
-	tn.tok = consumeTok(TT_IDENT)
-
-	ptn.children = append(ptn.children, tn)
-	return ptn
+	tn.Kype = TNT_EXPR
+	tn.children = append(tn.children, handleExprCont(true))
+	return tn
 }
 
-func handleExprBinary(ptn TreeNode) TreeNode {
+func handleExprUnary() TreeNode {
+	var tn TreeNode
+
+	if matchTok(TT_IDENT) {
+		tn.Kype = TNT_EXPR_VAR
+		tn.tok = consumeTok(TT_IDENT)
+	} else if matchTok(TT_LPAREN) {
+		consumeTok(TT_LPAREN)
+		tn = handleExprCont(true)
+		consumeTok(TT_RPAREN)
+	}
+
+	return tn
+}
+
+func handleExprBinary(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_EXPR_BINARY
 	tn.tok = advanceTok()
 
-	tn.children = append(tn.children, ptn)
-	tn = handleExpr(tn, false)
+	tn.children = append(tn.children, exprTreeNode)
+	tn.children = append(tn.children, handleExprCont(false))
 	return tn
 }
 
@@ -350,7 +329,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 			TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
 	}
 
-	tn = handleFuncs(tn)
+	tn.children = append(tn.children, handleFuncs())
 
 	return tn
 }
