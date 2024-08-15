@@ -20,7 +20,6 @@ const (
 	TNT_FUNC_PARAM_TYPE
 
 	TNT_STMT_LIST
-	TNT_STMT
 
 	TNT_STMT_DECL
 	TNT_STMT_DECL_IDENT
@@ -28,6 +27,10 @@ const (
 
 	TNT_STMT_EXPR
 	TNT_STMT_ASSIGN
+
+	TNT_STMT_WHILE
+	TNT_STMT_IF
+	TNT_STMT_ELSE
 
 	TNT_EXPR
 	TNT_EXPR_VAR
@@ -37,11 +40,37 @@ const (
 	TNT_EXPR_INT
 	TNT_EXPR_CHAR
 	TNT_EXPR_BINARY
-
-	TNT_WHILE
-	TNT_IF
-	TNT_ELSE
 )
+
+var TreeNodeTypeNames = map[TreeNodeType]string{
+	TNT_ILLEGAL:             "ILLEGAL",
+	TNT_ROOT:                "ROOT",
+	TNT_FUNC_LIST:           "FUNC_LIST",
+	TNT_FUNC:                "FUNC",
+	TNT_FUNC_IDENT:          "FUNC_IDENT",
+	TNT_FUNC_SIG:            "FUNC_SIG",
+	TNT_FUNC_PARAM_LIST:     "FUNC_PARAM_LIST",
+	TNT_FUNC_PARAM:          "FUNC_PARAM",
+	TNT_FUNC_PARAM_IDENT:    "FUNC_PARAM_IDENT",
+	TNT_FUNC_PARAM_TYPE:     "FUNC_PARAM_TYPE",
+	TNT_STMT_LIST:           "STMT_LIST",
+	TNT_STMT_DECL:           "STMT_DECL",
+	TNT_STMT_DECL_IDENT:     "STMT_DECL_IDENT",
+	TNT_STMT_DECL_TYPE:      "STMT_DECL_TYPE",
+	TNT_STMT_EXPR:           "STMT_EXPR",
+	TNT_STMT_ASSIGN:         "STMT_ASSIGN",
+	TNT_STMT_WHILE:          "STMT_WHILE",
+	TNT_STMT_IF:             "STMT_IF",
+	TNT_STMT_ELSE:           "STMT_ELSE",
+	TNT_EXPR:                "EXPR",
+	TNT_EXPR_VAR:            "EXPR_VAR",
+	TNT_EXPR_FUNC:           "EXPR_FUNC",
+	TNT_EXPR_FUNC_PARM_LIST: "EXPR_FUNC_PARM_LIST",
+	TNT_EXPR_FUNC_PARM:      "EXPR_FUNC_PARM",
+	TNT_EXPR_INT:            "EXPR_INT",
+	TNT_EXPR_CHAR:           "EXPR_CHAR",
+	TNT_EXPR_BINARY:         "EXPR_BINARY",
+}
 
 type TreeNode struct {
 	Kype     TreeNodeType
@@ -163,26 +192,21 @@ func handleStmtList() TreeNode {
 }
 
 func handleStmt() TreeNode {
-	var tn TreeNode
-	tn.Kype = TNT_STMT
-
 	if matchTok(TT_LET) {
-		tn.Children = append(tn.Children, handleDeclStmt())
+		return handleDeclStmt()
 	} else if matchTok(TT_WHILE) {
-		tn.Children = append(tn.Children, handleWhileStmt())
+		return handleWhileStmt()
 	} else if matchTok(TT_IF) {
-		tn.Children = append(tn.Children, handleIfStmt())
+		return handleIfStmt()
 	} else {
 		exprTreeNode := handleExpr()
 
-		if matchTok(TT_NEW_LINE) {
-			tn.Children = append(tn.Children, handleExprStmt(exprTreeNode))
-		} else if matchTok(TT_ASSIGN) {
-			tn.Children = append(tn.Children, handleAssignStmt(exprTreeNode))
+		if matchTok(TT_ASSIGN) {
+			return handleAssignStmt(exprTreeNode)
+		} else {
+			return handleExprStmt(exprTreeNode)
 		}
 	}
-
-	return tn
 }
 
 func handleDeclStmt() TreeNode {
@@ -240,7 +264,7 @@ func handleAssignStmt(exprTreeNode TreeNode) TreeNode {
 
 func handleWhileStmt() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_WHILE
+	tn.Kype = TNT_STMT_WHILE
 
 	consumeTok(TT_WHILE)
 
@@ -258,7 +282,7 @@ func handleWhileStmt() TreeNode {
 
 func handleIfStmt() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_IF
+	tn.Kype = TNT_STMT_IF
 
 	consumeTok(TT_IF)
 
@@ -280,7 +304,7 @@ func handleIfStmt() TreeNode {
 
 func handleElseStmt() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_ELSE
+	tn.Kype = TNT_STMT_ELSE
 
 	consumeTok(TT_ELSE)
 
@@ -400,7 +424,7 @@ func PrintTreeNode(tn TreeNode, level int) {
 		s = s + " "
 	}
 
-	fmt.Println(s, "->", tn.Kype, tn.Tok)
+	fmt.Println(s, "->", TreeNodeTypeNames[tn.Kype], tn.Tok)
 
 	for _, child := range tn.Children {
 		PrintTreeNode(child, level+4)
