@@ -285,7 +285,7 @@ func handleElseStmt() TreeNode {
 	consumeTok(TT_ELSE)
 
 	if matchTok(TT_IF) {
-		tn.Children = append(tn.Children, handleStmtList())
+		tn.Children = append(tn.Children, handleIfStmt())
 	} else {
 		consumeTok(TT_NEW_LINE)
 
