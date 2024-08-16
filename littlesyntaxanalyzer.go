@@ -18,6 +18,7 @@ const (
 	TNT_FUNC_PARAM
 	TNT_FUNC_PARAM_IDENT
 	TNT_FUNC_PARAM_TYPE
+	TNT_FUNC_RETURN_TYPE
 
 	TNT_STMT_LIST
 
@@ -27,10 +28,15 @@ const (
 
 	TNT_STMT_EXPR
 	TNT_STMT_ASSIGN
+	TNT_STMT_STORE_STRING
 
 	TNT_STMT_WHILE
 	TNT_STMT_IF
 	TNT_STMT_ELSE
+
+	TNT_STMT_RETURN
+	TNT_STMT_BREAK
+	TNT_STMT_CONTINUE
 
 	TNT_EXPR
 	TNT_EXPR_VAR
@@ -38,6 +44,7 @@ const (
 	TNT_EXPR_FUNC_PARM_LIST
 	TNT_EXPR_FUNC_PARM
 	TNT_EXPR_INT
+	TNT_EXPR_NEG_INT
 	TNT_EXPR_CHAR
 	TNT_EXPR_BINARY
 )
@@ -139,6 +146,10 @@ func handleFuncSig() TreeNode {
 
 	consumeTok(TT_RPAREN)
 
+	if matchTok(TT_IDENT) {
+		tn.Children = append(tn.Children, handleFuncReturnType())
+	}
+
 	return tn
 }
 
@@ -180,11 +191,19 @@ func handleFuncParamType() TreeNode {
 	return tn
 }
 
+func handleFuncReturnType() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_FUNC_RETURN_TYPE
+	tn.Tok = consumeTok(TT_IDENT)
+
+	return tn
+}
+
 func handleStmtList() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_LIST
 
-	for matchTok(TT_LET, TT_IDENT, TT_LPAREN, TT_WHILE, TT_IF) {
+	for matchTok(TT_LET, TT_IDENT, TT_LPAREN, TT_WHILE, TT_IF, TT_RETURN) {
 		tn.Children = append(tn.Children, handleStmt())
 	}
 
@@ -198,11 +217,19 @@ func handleStmt() TreeNode {
 		return handleStmtWhile()
 	} else if matchTok(TT_IF) {
 		return handleStmtIf()
+	} else if matchTok(TT_RETURN) {
+		return handleStmtReturn()
+	} else if matchTok(TT_BREAK) {
+		return handleStmtBreak()
+	} else if matchTok(TT_CONTINUE) {
+		return handleStmtContinue()
 	} else {
 		exprTreeNode := handleExpr()
 
 		if matchTok(TT_ASSIGN) {
 			return handleStmtAssign(exprTreeNode)
+		} else if matchTok(TT_ARROW) {
+			return handleStmtStoreString(exprTreeNode)
 		} else {
 			return handleStmtExpr(exprTreeNode)
 		}
@@ -257,6 +284,20 @@ func handleStmtAssign(exprTreeNode TreeNode) TreeNode {
 
 	tn.Children = append(tn.Children, exprTreeNode)
 	tn.Children = append(tn.Children, handleExpr())
+
+	consumeTok(TT_NEW_LINE)
+	return tn
+}
+
+func handleStmtStoreString(exprTreeNode TreeNode) TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_STORE_STRING
+
+	consumeTok(TT_ARROW)
+
+	tn.Tok = consumeTok(TT_STR)
+
+	tn.Children = append(tn.Children, exprTreeNode)
 
 	consumeTok(TT_NEW_LINE)
 	return tn
@@ -366,7 +407,7 @@ func handleExprUnaryFuncParmList() TreeNode {
 
 	consumeTok(TT_LPAREN)
 
-	if matchTok(TT_IDENT, TT_LPAREN, TT_INT, TT_CHAR) {
+	if matchTok(TT_IDENT, TT_LPAREN, TT_INT, TT_CHAR, TT_SUB) {
 		tn.Children = append(tn.Children, handleExprUnaryFuncParm())
 		for matchTok(TT_COMMA) {
 			consumeTok(TT_COMMA)
@@ -385,6 +426,8 @@ func handleExprUnaryFuncParm() TreeNode {
 
 	if matchTok(TT_INT) {
 		tn.Children = append(tn.Children, handleExprUnaryFuncParmInt())
+	} else if matchTok(TT_SUB) {
+		tn.Children = append(tn.Children, handleExprUnaryFuncParmNegInt())
 	} else if matchTok(TT_CHAR) {
 		tn.Children = append(tn.Children, handleExprUnaryFuncParmChar())
 	} else {
@@ -397,6 +440,14 @@ func handleExprUnaryFuncParm() TreeNode {
 func handleExprUnaryFuncParmInt() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_EXPR_INT
+	tn.Tok = consumeTok(TT_INT)
+	return tn
+}
+
+func handleExprUnaryFuncParmNegInt() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_EXPR_NEG_INT
+	consumeTok(TT_SUB)
 	tn.Tok = consumeTok(TT_INT)
 	return tn
 }
@@ -415,6 +466,36 @@ func handleExprBinary(exprTreeNode TreeNode) TreeNode {
 
 	tn.Children = append(tn.Children, exprTreeNode)
 	tn.Children = append(tn.Children, handleExprCont(false))
+	return tn
+}
+
+func handleStmtReturn() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_RETURN
+	consumeTok(TT_RETURN)
+
+	if matchTok(TT_IDENT, TT_LPAREN) {
+		tn.Children = append(tn.Children, handleExpr())
+	}
+
+	consumeTok(TT_NEW_LINE)
+	return tn
+
+}
+
+func handleStmtBreak() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_BREAK
+	consumeTok(TT_BREAK)
+	consumeTok(TT_NEW_LINE)
+	return tn
+}
+
+func handleStmtContinue() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_CONTINUE
+	consumeTok(TT_BREAK)
+	consumeTok(TT_NEW_LINE)
 	return tn
 }
 
