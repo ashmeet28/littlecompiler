@@ -29,6 +29,7 @@ const (
 	TNT_STMT_EXPR
 	TNT_STMT_ASSIGN
 	TNT_STMT_STORE_STRING
+	TNT_STMT_STRING
 
 	TNT_STMT_WHILE
 	TNT_STMT_IF
@@ -295,11 +296,18 @@ func handleStmtStoreString(exprTreeNode TreeNode) TreeNode {
 
 	consumeTok(TT_ARROW)
 
-	tn.Tok = consumeTok(TT_STR)
-
 	tn.Children = append(tn.Children, exprTreeNode)
+	tn.Children = append(tn.Children, handleStmtString())
 
 	consumeTok(TT_NEW_LINE)
+	return tn
+}
+
+func handleStmtString() TreeNode {
+	var tn TreeNode
+	tn.Kype = TNT_STMT_STRING
+	tn.Tok = consumeTok(TT_STR)
+
 	return tn
 }
 
