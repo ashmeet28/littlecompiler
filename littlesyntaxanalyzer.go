@@ -193,37 +193,37 @@ func handleStmtList() TreeNode {
 
 func handleStmt() TreeNode {
 	if matchTok(TT_LET) {
-		return handleDeclStmt()
+		return handleStmtDecl()
 	} else if matchTok(TT_WHILE) {
-		return handleWhileStmt()
+		return handleStmtWhile()
 	} else if matchTok(TT_IF) {
-		return handleIfStmt()
+		return handleStmtIf()
 	} else {
 		exprTreeNode := handleExpr()
 
 		if matchTok(TT_ASSIGN) {
-			return handleAssignStmt(exprTreeNode)
+			return handleStmtAssign(exprTreeNode)
 		} else {
-			return handleExprStmt(exprTreeNode)
+			return handleStmtExpr(exprTreeNode)
 		}
 	}
 }
 
-func handleDeclStmt() TreeNode {
+func handleStmtDecl() TreeNode {
 	consumeTok(TT_LET)
 
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL
 
-	tn.Children = append(tn.Children, handleDeclStmtIdent())
-	tn.Children = append(tn.Children, handleDeclStmtType())
+	tn.Children = append(tn.Children, handleStmtDeclIdent())
+	tn.Children = append(tn.Children, handleStmtDeclType())
 
 	consumeTok(TT_NEW_LINE)
 
 	return tn
 }
 
-func handleDeclStmtIdent() TreeNode {
+func handleStmtDeclIdent() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_IDENT
 	tn.Tok = consumeTok(TT_IDENT)
@@ -231,7 +231,7 @@ func handleDeclStmtIdent() TreeNode {
 	return tn
 }
 
-func handleDeclStmtType() TreeNode {
+func handleStmtDeclType() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_DECL_TYPE
 	tn.Tok = consumeTok(TT_IDENT)
@@ -239,7 +239,7 @@ func handleDeclStmtType() TreeNode {
 	return tn
 }
 
-func handleExprStmt(exprTreeNode TreeNode) TreeNode {
+func handleStmtExpr(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_EXPR
 
@@ -249,7 +249,7 @@ func handleExprStmt(exprTreeNode TreeNode) TreeNode {
 	return tn
 }
 
-func handleAssignStmt(exprTreeNode TreeNode) TreeNode {
+func handleStmtAssign(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_ASSIGN
 
@@ -262,7 +262,7 @@ func handleAssignStmt(exprTreeNode TreeNode) TreeNode {
 	return tn
 }
 
-func handleWhileStmt() TreeNode {
+func handleStmtWhile() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_WHILE
 
@@ -280,7 +280,7 @@ func handleWhileStmt() TreeNode {
 	return tn
 }
 
-func handleIfStmt() TreeNode {
+func handleStmtIf() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_IF
 
@@ -293,7 +293,7 @@ func handleIfStmt() TreeNode {
 	tn.Children = append(tn.Children, handleStmtList())
 
 	if matchTok(TT_ELSE) {
-		tn.Children = append(tn.Children, handleElseStmt())
+		tn.Children = append(tn.Children, handleStmtElse())
 	} else {
 		consumeTok(TT_END)
 		consumeTok(TT_NEW_LINE)
@@ -302,14 +302,14 @@ func handleIfStmt() TreeNode {
 	return tn
 }
 
-func handleElseStmt() TreeNode {
+func handleStmtElse() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_ELSE
 
 	consumeTok(TT_ELSE)
 
 	if matchTok(TT_IF) {
-		tn.Children = append(tn.Children, handleIfStmt())
+		tn.Children = append(tn.Children, handleStmtIf())
 	} else {
 		consumeTok(TT_NEW_LINE)
 
