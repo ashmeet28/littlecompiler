@@ -1,5 +1,9 @@
 package main
 
+import (
+	"encoding/binary"
+)
+
 const (
 	OP_ADD byte = iota
 	OP_SUB
@@ -32,12 +36,90 @@ var (
 	OP_RETURN byte = 0x07
 
 	OP_PUSH byte = 0x08
+	OP_POP  byte = 0x09
 )
 
-var symTableAddFuncIdent func()
+type SymType byte
 
-func compileTreeRoot(tn TreeNode) {
-	compileTreeChildren(tn.Children)
+const (
+	ST_ILLEGAL SymType = iota
+
+	ST_FUNC
+	ST_INT
+)
+
+type SymData struct {
+	Kype        SymType
+	Ident       string
+	Addr        int
+	BlockLevel  int
+	IntSize     int
+	IsIntSigned bool
+}
+
+var symTable []SymData
+
+var symTableCurBlockLevel int
+
+func symTableAddFuncIdent(ident string) {
+	var s SymData
+	s.Kype = ST_FUNC
+	s.Ident = ident
+	s.Addr = len(bytecode)
+	s.BlockLevel = 0
+
+	symTable = append(symTable, s)
+}
+
+func symTableFindFunc(ident string) (bool, SymData) {
+	for _, s := range symTable {
+		if s.Ident == ident {
+			return true, s
+		}
+	}
+	var s SymData
+	s.Kype = ST_ILLEGAL
+	return false, s
+}
+
+func symTableIncBlockLevel() {
+	symTableCurBlockLevel++
+}
+
+func symTableDecBlockLevel() {
+	symTableCurBlockLevel--
+
+	var newSymTable []SymData
+
+	for _, s := range symTable {
+		if s.BlockLevel > symTableCurBlockLevel {
+			newSymTable = append(newSymTable, s)
+		}
+	}
+
+	symTable = newSymTable
+}
+
+var bytecode []byte
+
+var blankPushOpAddrStack []int
+
+func emitBlankPushOp() {
+	blankPushOpAddrStack = append(blankPushOpAddrStack, len(bytecode))
+	bytecode = append(bytecode, OP_PUSH)
+	bytecode = binary.LittleEndian.AppendUint64(bytecode, 0)
+}
+
+func fillBlankPushOp(v uint64) {
+	addr := blankPushOpAddrStack[len(blankPushOpAddrStack)-1]
+	for i, b := range binary.LittleEndian.AppendUint64(make([]byte, 0), v) {
+		bytecode[addr+i+1] = b
+	}
+	blankPushOpAddrStack = blankPushOpAddrStack[:len(blankPushOpAddrStack)-1]
+}
+
+func emitOp(op byte) {
+	bytecode = append(bytecode, op)
 }
 
 func compileFuncList(tn TreeNode) {
@@ -45,16 +127,33 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
+	symTableIncBlockLevel()
 	compileTreeChildren(tn.Children)
+	symTableDecBlockLevel()
 }
 
 func compileFuncIdent(tn TreeNode) {
+	symTableAddFuncIdent(string(tn.Tok.Buf))
+}
 
+func compileFuncSig(tn TreeNode) {
+}
+
+func compileStmtList(tn TreeNode) {
+	compileTreeChildren(tn.Children)
+}
+
+func compileStmtDecl(tn TreeNode) {
 }
 
 func compileTreeChildren(treeChildren []TreeNode) {
 	treeNodeFuncs := map[TreeNodeType]func(TreeNode){
-		TNT_ROOT: compileTreeRoot,
+		TNT_FUNC_LIST:  compileFuncList,
+		TNT_FUNC:       compileFunc,
+		TNT_FUNC_IDENT: compileFuncIdent,
+		TNT_FUNC_SIG:   compileFuncSig,
+		TNT_STMT_LIST:  compileStmtList,
+		TNT_STMT_DECL:  compileStmtDecl,
 	}
 
 	for _, c := range treeChildren {
@@ -63,6 +162,22 @@ func compileTreeChildren(treeChildren []TreeNode) {
 }
 
 func BytecodeGenerator(tn TreeNode) []byte {
-	var bytecode []byte
+	bytecode = make([]byte, 0)
+	symTable = make([]SymData, 0)
+	blankPushOpAddrStack = make([]int, 0)
+
+	emitBlankPushOp()
+
+	emitOp(OP_CALL)
+	emitOp(OP_HALT)
+
+	compileTreeChildren(tn.Children)
+
+	if ok, s := symTableFindFunc("main"); ok {
+		fillBlankPushOp(uint64(s.Addr))
+	} else {
+		PrintErrorAndExit(0)
+	}
+
 	return bytecode
 }

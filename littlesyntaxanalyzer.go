@@ -40,12 +40,12 @@ const (
 	TNT_STMT_CONTINUE
 
 	TNT_EXPR
-	TNT_EXPR_VAR
+	TNT_EXPR_INT
 	TNT_EXPR_FUNC
 	TNT_EXPR_FUNC_PARM_LIST
 	TNT_EXPR_FUNC_PARM
-	TNT_EXPR_INT
-	TNT_EXPR_NEG_INT
+	TNT_EXPR_INT_LIT
+	TNT_EXPR_NEG_INT_LIT
 	TNT_EXPR_CHAR
 	TNT_EXPR_BINARY
 )
@@ -77,12 +77,12 @@ var TreeNodeTypeNames = map[TreeNodeType]string{
 	TNT_STMT_BREAK:          "STMT_BREAK",
 	TNT_STMT_CONTINUE:       "STMT_CONTINUE",
 	TNT_EXPR:                "EXPR",
-	TNT_EXPR_VAR:            "EXPR_VAR",
+	TNT_EXPR_INT:            "EXPR_INT",
 	TNT_EXPR_FUNC:           "EXPR_FUNC",
 	TNT_EXPR_FUNC_PARM_LIST: "EXPR_FUNC_PARM_LIST",
 	TNT_EXPR_FUNC_PARM:      "EXPR_FUNC_PARM",
-	TNT_EXPR_INT:            "EXPR_INT",
-	TNT_EXPR_NEG_INT:        "EXPR_NEG_INT",
+	TNT_EXPR_INT_LIT:        "EXPR_INT_LIT",
+	TNT_EXPR_NEG_INT_LIT:    "EXPR_NEG_INT_LIT",
 	TNT_EXPR_CHAR:           "EXPR_CHAR",
 	TNT_EXPR_BINARY:         "EXPR_BINARY",
 }
@@ -93,15 +93,55 @@ type TreeNode struct {
 	Tok      TokenData
 }
 
-var peekTok func() TokenData
+var curToks []TokenData
 
-var advanceTok func() TokenData
+func peekTok() TokenData {
+	if len(curToks) == 0 {
+		PrintErrorAndExit(0)
+	}
+	return curToks[0]
+}
 
-var consumeTok func(TokenType) TokenData
+func advanceTok() TokenData {
+	if len(curToks) == 0 {
+		PrintErrorAndExit(0)
+	}
+	tok := curToks[0]
+	curToks = curToks[1:]
+	return tok
+}
 
-var matchTok func(...TokenType) bool
+func consumeTok(tokType TokenType) TokenData {
+	if len(curToks) == 0 {
+		PrintErrorAndExit(0)
+	}
+	tok := curToks[0]
+	if tok.Kype != tokType {
+		PrintErrorAndExit(tok.LineNumber)
+	}
+	curToks = curToks[1:]
+	return tok
+}
 
-var matchBinaryTok func() bool
+func matchTok(tokTypes ...TokenType) bool {
+	for _, curTokType := range tokTypes {
+		if curTokType == peekTok().Kype {
+			return true
+		}
+	}
+	return false
+}
+
+func matchBinaryTok() bool {
+	return matchTok(TT_ADD, TT_SUB,
+		TT_MUL, TT_QUO, TT_REM,
+		TT_AND, TT_OR, TT_XOR,
+		TT_SHL, TT_SHR,
+		TT_LAND, TT_LOR,
+		TT_EQL, TT_NEQ,
+		TT_LSS, TT_GTR,
+		TT_LEQ, TT_GEQ)
+}
 
 func parseFuncList() TreeNode {
 	var tn TreeNode
@@ -405,7 +445,7 @@ func parseExprUnary() TreeNode {
 			tn.Kype = TNT_EXPR_FUNC
 			tn.Children = append(tn.Children, parseExprUnaryFuncParmList())
 		} else {
-			tn.Kype = TNT_EXPR_VAR
+			tn.Kype = TNT_EXPR_INT
 		}
 	} else {
 		consumeTok(TT_LPAREN)
@@ -454,14 +494,14 @@ func parseExprUnaryFuncParm() TreeNode {
 
 func parseExprUnaryFuncParmInt() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_EXPR_INT
+	tn.Kype = TNT_EXPR_INT_LIT
 	tn.Tok = consumeTok(TT_INT)
 	return tn
 }
 
 func parseExprUnaryFuncParmNegInt() TreeNode {
 	var tn TreeNode
-	tn.Kype = TNT_EXPR_NEG_INT
+	tn.Kype = TNT_EXPR_NEG_INT_LIT
 	consumeTok(TT_SUB)
 	tn.Tok = consumeTok(TT_INT)
 	return tn
@@ -528,54 +568,11 @@ func PrintTreeNode(tn TreeNode, level int) {
 }
 
 func SyntaxAnalyzer(toks []TokenData) TreeNode {
+	curToks = toks
+
 	var tn TreeNode
 
 	tn.Kype = TNT_ROOT
-
-	peekTok = func() TokenData {
-		if len(toks) == 0 {
-			PrintErrorAndExit(0)
-		}
-		return toks[0]
-	}
-
-	advanceTok = func() TokenData {
-		if len(toks) == 0 {
-			PrintErrorAndExit(0)
-		}
-		tok := toks[0]
-		toks = toks[1:]
-		return tok
-	}
-
-	consumeTok = func(tokType TokenType) TokenData {
-		if len(toks) == 0 {
-			PrintErrorAndExit(0)
-		}
-		tok := toks[0]
-		if tok.Kype != tokType {
-			PrintErrorAndExit(tok.LineNumber)
-		}
-		toks = toks[1:]
-		return tok
-	}
-
-	matchTok = func(tokTypes ...TokenType) bool {
-		for _, curTokType := range tokTypes {
-			if curTokType == peekTok().Kype {
-				return true
-			}
-		}
-		return false
-	}
-
-	matchBinaryTok = func() bool {
-		return matchTok(TT_ADD, TT_SUB, TT_MUL, TT_QUO, TT_REM,
-			TT_AND, TT_OR, TT_XOR,
-			TT_SHL, TT_SHR,
-			TT_LAND, TT_LOR,
-			TT_EQL, TT_NEQ, TT_LSS, TT_GTR, TT_LEQ, TT_GEQ)
-	}
 
 	tn.Children = append(tn.Children, parseFuncList())
 
