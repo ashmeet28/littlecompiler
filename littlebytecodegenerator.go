@@ -45,16 +45,23 @@ const (
 	ST_ILLEGAL SymType = iota
 
 	ST_FUNC
-	ST_INT
+
+	ST_I8
+	ST_I16
+	ST_I32
+	ST_I64
+
+	ST_U8
+	ST_U16
+	ST_U32
+	ST_U64
 )
 
 type SymData struct {
-	Kype        SymType
-	Ident       string
-	Addr        int
-	BlockLevel  int
-	IntSize     int
-	IsIntSigned bool
+	Kype       SymType
+	Ident      string
+	Addr       int
+	BlockLevel int
 }
 
 var symTable []SymData
