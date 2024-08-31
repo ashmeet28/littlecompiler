@@ -1,8 +1,6 @@
 package main
 
-import (
-	"encoding/binary"
-)
+import "encoding/binary"
 
 const (
 	OP_ADD byte = iota
@@ -53,20 +51,21 @@ const (
 	VT_U16
 	VT_U32
 	VT_U64
-
-	VT_FUNC_ADDR
-	VT_RETURN_ADDR
-	VT_PREV_FRAME_PTR
 )
 
 type CallStackValue struct {
-	Kype       byte
+	Kype       CallStackValueType
+	IsLocal    string
 	Ident      string
 	IsLValue   bool
+	BlockLevel int
 	BytesCount int
 }
 
+var currentBlockLevel int
 var callStack []CallStackValue
+
+var funcAddrTable map[string]uint64
 
 var bytecode []byte
 
@@ -95,11 +94,12 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
+	callStack = make([]CallStackValue, 0)
 	compileTreeChildren(tn.Children)
 }
 
 func compileFuncIdent(tn TreeNode) {
-	symTableAddFuncIdent(string(tn.Tok.Buf))
+	funcAddrTable[string(tn.Tok.Buf)] = uint64(len(bytecode))
 }
 
 func compileFuncSig(tn TreeNode) {
@@ -129,7 +129,6 @@ func compileTreeChildren(treeChildren []TreeNode) {
 
 func BytecodeGenerator(tn TreeNode) []byte {
 	bytecode = make([]byte, 0)
-	symTable = make([]SymData, 0)
 	blankPushOpAddrStack = make([]int, 0)
 
 	emitBlankPushOp()
@@ -139,8 +138,8 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	compileTreeChildren(tn.Children)
 
-	if ok, s := symTableFindFunc("main"); ok {
-		fillBlankPushOp(uint64(s.Addr))
+	if funcAddr, ok := funcAddrTable["main"]; ok {
+		fillBlankPushOp(uint64(funcAddr))
 	} else {
 		PrintErrorAndExit(0)
 	}
