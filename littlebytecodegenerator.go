@@ -1,6 +1,9 @@
 package main
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"strconv"
+)
 
 const (
 	OP_ADD byte = iota
@@ -37,23 +40,84 @@ var (
 	OP_POP  byte = 0x09
 )
 
-type CSIntData struct {
-	BytesCount int
+type IntInfo struct {
 	IsSigned   bool
+	RealSize   int
 	IsLocal    bool
 	Ident      string
 	IsLValue   bool
 	BlockLevel int
+	BytesCount int
 }
 
-var currentBlockLevel int
-var callStack []CSIntData
+var currBlockLevel int
+var currReturnIntInfo IntInfo
+var callStack []IntInfo
 
-func pushLocalToCallStack(ident string) {
-	var v CSIntData
+func isValidIntKype(kype string) bool {
+	_, ok := map[string]bool{"i8": true, "i16": true, "i32": true, "i64": true,
+		"u8": true, "u16": true, "u32": true, "u64": true}[kype]
+	return ok
+}
+
+func pushLocalIntInfo(ident string, kype string) bool {
+	if !isValidIntKype(kype) {
+		return false
+	}
+
+	var v IntInfo
+
+	v.IsSigned = true
+	if kype[:1] == "u" {
+		v.IsSigned = false
+	}
+
+	i, err := strconv.ParseInt(kype[1:], 10, 64)
+	if err != nil {
+		return false
+	}
+
+	v.RealSize = int(i / 8)
+
 	v.IsLocal = true
 	v.Ident = ident
-	v.BlockLevel = currentBlockLevel
+	v.IsLValue = false
+	v.BlockLevel = currBlockLevel
+	v.BytesCount = v.RealSize
+
+	callStack = append(callStack, v)
+
+	return true
+}
+
+func setReturnIntInfo(kype string) bool {
+	if !isValidIntKype(kype) {
+		return false
+	}
+
+	var v IntInfo
+
+	v.IsSigned = true
+	if kype[:1] == "u" {
+		v.IsSigned = false
+	}
+
+	i, err := strconv.ParseInt(kype[1:], 10, 64)
+	if err != nil {
+		return false
+	}
+
+	v.RealSize = int(i / 8)
+
+	v.IsLocal = false
+	v.Ident = ""
+	v.IsLValue = false
+	v.BlockLevel = 0
+	v.BytesCount = v.RealSize
+
+	currReturnIntInfo = v
+
+	return true
 }
 
 var funcAddrTable map[string]uint64
@@ -85,7 +149,7 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
-	callStack = make([]CSIntData, 0)
+	callStack = make([]IntInfo, 0)
 	compileTreeChildren(tn.Children)
 }
 
@@ -102,6 +166,11 @@ func compileFuncParamList(tn TreeNode) {
 }
 
 func compileFuncParam(tn TreeNode) {
+	pushLocalIntInfo(string(tn.Children[0].Tok.Buf), string(tn.Children[1].Tok.Buf))
+}
+
+func compileFuncReturnType(tn TreeNode) {
+	setReturnIntInfo(string(tn.Tok.Buf))
 }
 
 func compileStmtList(tn TreeNode) {
@@ -113,12 +182,13 @@ func compileStmtDecl(tn TreeNode) {
 
 func compileTreeChildren(treeChildren []TreeNode) {
 	treeNodeFuncs := map[TreeNodeType]func(TreeNode){
-		TNT_FUNC_LIST:  compileFuncList,
-		TNT_FUNC:       compileFunc,
-		TNT_FUNC_IDENT: compileFuncIdent,
-		TNT_FUNC_SIG:   compileFuncSig,
-		TNT_STMT_LIST:  compileStmtList,
-		TNT_STMT_DECL:  compileStmtDecl,
+		TNT_FUNC_LIST:        compileFuncList,
+		TNT_FUNC:             compileFunc,
+		TNT_FUNC_IDENT:       compileFuncIdent,
+		TNT_FUNC_SIG:         compileFuncSig,
+		TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
+		TNT_STMT_LIST:        compileStmtList,
+		TNT_STMT_DECL:        compileStmtDecl,
 	}
 
 	for _, c := range treeChildren {
@@ -129,6 +199,7 @@ func compileTreeChildren(treeChildren []TreeNode) {
 func BytecodeGenerator(tn TreeNode) []byte {
 	bytecode = make([]byte, 0)
 	blankPushOpAddrStack = make([]int, 0)
+	funcAddrTable = map[string]uint64{}
 
 	emitBlankPushOp()
 

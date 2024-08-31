@@ -23,11 +23,11 @@ func main() {
 	// 	fmt.Println(t)
 	// }
 
-	tn := SyntaxAnalyzer(toks)
-
-	os.Stdout.Write(BytecodeGenerator(tn))
-
 	// tn := SyntaxAnalyzer(toks)
-	// PrintTreeNode(tn, 4)
-	// BytecodeGenerator(tn)
+
+	// os.Stdout.Write(BytecodeGenerator(tn))
+
+	tn := SyntaxAnalyzer(toks)
+	PrintTreeNode(tn, 4)
+	BytecodeGenerator(tn)
 }
