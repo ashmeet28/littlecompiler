@@ -37,33 +37,24 @@ var (
 	OP_POP  byte = 0x09
 )
 
-type CallStackValueType int
-
-const (
-	VT_ILLEGAL CallStackValueType = iota
-
-	VT_I8
-	VT_I16
-	VT_I32
-	VT_I64
-
-	VT_U8
-	VT_U16
-	VT_U32
-	VT_U64
-)
-
-type CallStackValue struct {
-	Kype       CallStackValueType
-	IsLocal    string
+type CSIntData struct {
+	BytesCount int
+	IsSigned   bool
+	IsLocal    bool
 	Ident      string
 	IsLValue   bool
 	BlockLevel int
-	BytesCount int
 }
 
 var currentBlockLevel int
-var callStack []CallStackValue
+var callStack []CSIntData
+
+func pushLocalToCallStack(ident string) {
+	var v CSIntData
+	v.IsLocal = true
+	v.Ident = ident
+	v.BlockLevel = currentBlockLevel
+}
 
 var funcAddrTable map[string]uint64
 
@@ -94,7 +85,7 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
-	callStack = make([]CallStackValue, 0)
+	callStack = make([]CSIntData, 0)
 	compileTreeChildren(tn.Children)
 }
 
@@ -103,6 +94,14 @@ func compileFuncIdent(tn TreeNode) {
 }
 
 func compileFuncSig(tn TreeNode) {
+	compileTreeChildren(tn.Children)
+}
+
+func compileFuncParamList(tn TreeNode) {
+	compileTreeChildren(tn.Children)
+}
+
+func compileFuncParam(tn TreeNode) {
 }
 
 func compileStmtList(tn TreeNode) {
