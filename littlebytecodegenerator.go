@@ -39,73 +39,34 @@ var (
 	OP_POP  byte = 0x09
 )
 
-type SymType byte
+type CallStackValueType int
 
 const (
-	ST_ILLEGAL SymType = iota
+	VT_ILLEGAL CallStackValueType = iota
 
-	ST_FUNC
+	VT_I8
+	VT_I16
+	VT_I32
+	VT_I64
 
-	ST_I8
-	ST_I16
-	ST_I32
-	ST_I64
+	VT_U8
+	VT_U16
+	VT_U32
+	VT_U64
 
-	ST_U8
-	ST_U16
-	ST_U32
-	ST_U64
+	VT_FUNC_ADDR
+	VT_RETURN_ADDR
+	VT_PREV_FRAME_PTR
 )
 
-type SymData struct {
-	Kype       SymType
+type CallStackValue struct {
+	Kype       byte
 	Ident      string
-	Addr       int
-	BlockLevel int
+	IsLValue   bool
+	BytesCount int
 }
 
-var symTable []SymData
-
-var symTableCurBlockLevel int
-
-func symTableAddFuncIdent(ident string) {
-	var s SymData
-	s.Kype = ST_FUNC
-	s.Ident = ident
-	s.Addr = len(bytecode)
-	s.BlockLevel = 0
-
-	symTable = append(symTable, s)
-}
-
-func symTableFindFunc(ident string) (bool, SymData) {
-	for _, s := range symTable {
-		if s.Ident == ident {
-			return true, s
-		}
-	}
-	var s SymData
-	s.Kype = ST_ILLEGAL
-	return false, s
-}
-
-func symTableIncBlockLevel() {
-	symTableCurBlockLevel++
-}
-
-func symTableDecBlockLevel() {
-	symTableCurBlockLevel--
-
-	var newSymTable []SymData
-
-	for _, s := range symTable {
-		if s.BlockLevel > symTableCurBlockLevel {
-			newSymTable = append(newSymTable, s)
-		}
-	}
-
-	symTable = newSymTable
-}
+var callStack []CallStackValue
 
 var bytecode []byte
 
@@ -134,9 +95,7 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
-	symTableIncBlockLevel()
 	compileTreeChildren(tn.Children)
-	symTableDecBlockLevel()
 }
 
 func compileFuncIdent(tn TreeNode) {
