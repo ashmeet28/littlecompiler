@@ -173,22 +173,47 @@ func compileFuncReturnType(tn TreeNode) {
 	setReturnIntInfo(string(tn.Tok.Buf))
 }
 
-func compileStmtList(tn TreeNode) {
-	compileTreeChildren(tn.Children)
-}
-
-func compileStmtDecl(tn TreeNode) {
-}
-
 func compileTreeChildren(treeChildren []TreeNode) {
 	treeNodeFuncs := map[TreeNodeType]func(TreeNode){
-		TNT_FUNC_LIST:        compileFuncList,
-		TNT_FUNC:             compileFunc,
+
+		TNT_FUNC_LIST: compileFuncList,
+		TNT_FUNC:      compileFunc,
+
 		TNT_FUNC_IDENT:       compileFuncIdent,
 		TNT_FUNC_SIG:         compileFuncSig,
+		TNT_FUNC_PARAM_LIST:  compileFuncParamList,
+		TNT_FUNC_PARAM:       compileFuncParam,
 		TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
-		TNT_STMT_LIST:        compileStmtList,
-		TNT_STMT_DECL:        compileStmtDecl,
+
+		// TNT_STMT_LIST
+
+		// TNT_STMT_DECL
+		// TNT_STMT_DECL_IDENT
+		// TNT_STMT_DECL_TYPE
+
+		// TNT_STMT_EXPR
+		// TNT_STMT_ASSIGN
+		// TNT_STMT_STORE_STRING
+		// TNT_STMT_STRING
+
+		// TNT_STMT_WHILE
+		// TNT_STMT_IF
+		// TNT_STMT_ELSE
+
+		// TNT_STMT_RETURN
+		// TNT_STMT_BREAK
+		// TNT_STMT_CONTINUE
+
+		// TNT_EXPR
+		// TNT_EXPR_INT
+		// TNT_EXPR_FUNC
+		// TNT_EXPR_FUNC_PARM_LIST
+		// TNT_EXPR_FUNC_PARM
+		// TNT_EXPR_INT_LIT
+		// TNT_EXPR_NEG_INT_LIT
+		// TNT_EXPR_CHAR
+		// TNT_EXPR_BINARY
+
 	}
 
 	for _, c := range treeChildren {

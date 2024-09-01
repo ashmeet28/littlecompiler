@@ -29,5 +29,5 @@ func main() {
 
 	tn := SyntaxAnalyzer(toks)
 	PrintTreeNode(tn, 4)
-	BytecodeGenerator(tn)
+	// BytecodeGenerator(tn)s
 }
