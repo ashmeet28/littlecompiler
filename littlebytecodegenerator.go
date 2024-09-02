@@ -60,7 +60,7 @@ func isValidIntKype(kype string) bool {
 	return ok
 }
 
-func pushLocalIntInfo(ident string, kype string) bool {
+func callStackPushLocal(ident string, kype string) bool {
 	if !isValidIntKype(kype) {
 		return false
 	}
@@ -120,6 +120,14 @@ func setReturnIntInfo(kype string) bool {
 	return true
 }
 
+func incBlockLevel() {
+	currBlockLevel++
+}
+
+func decBlockLevel() {
+	currBlockLevel--
+}
+
 var funcAddrTable map[string]uint64
 
 var bytecode []byte
@@ -149,6 +157,8 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
+	currBlockLevel = 0
+	currReturnIntInfo = IntInfo{}
 	callStack = make([]IntInfo, 0)
 	compileTreeChildren(tn.Children)
 }
@@ -166,11 +176,16 @@ func compileFuncParamList(tn TreeNode) {
 }
 
 func compileFuncParam(tn TreeNode) {
-	pushLocalIntInfo(string(tn.Children[0].Tok.Buf), string(tn.Children[1].Tok.Buf))
+	callStackPushLocal(string(tn.Children[0].Tok.Buf), string(tn.Children[1].Tok.Buf))
 }
 
 func compileFuncReturnType(tn TreeNode) {
 	setReturnIntInfo(string(tn.Tok.Buf))
+}
+
+func compileStmtList(tn TreeNode) {
+	incBlockLevel()
+	compileTreeChildren(tn.Children)
 }
 
 func compileTreeChildren(treeChildren []TreeNode) {
@@ -185,7 +200,7 @@ func compileTreeChildren(treeChildren []TreeNode) {
 		TNT_FUNC_PARAM:       compileFuncParam,
 		TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
 
-		// TNT_STMT_LIST
+		TNT_STMT_LIST: compileStmtList,
 
 		// TNT_STMT_DECL
 		// TNT_STMT_DECL_IDENT
