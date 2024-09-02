@@ -19,15 +19,6 @@ func main() {
 	buf, _ := os.ReadFile(os.Args[1])
 	toks := LexicalAnalyzer(append(buf, 0x0a))
 
-	// for _, t := range toks {
-	// 	fmt.Println(t)
-	// }
-
-	// tn := SyntaxAnalyzer(toks)
-
-	// os.Stdout.Write(BytecodeGenerator(tn))
-
 	tn := SyntaxAnalyzer(toks)
 	PrintTreeNode(tn, 4)
-	// BytecodeGenerator(tn)s
 }
