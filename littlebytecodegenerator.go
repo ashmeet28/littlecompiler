@@ -50,8 +50,9 @@ type IntInfo struct {
 	BytesCount int
 }
 
-var currBlockLevel int
-var currReturnIntInfo IntInfo
+var blockLevel int
+var returnIntInfo IntInfo
+var framePointer int
 var callStack []IntInfo
 
 func isValidIntKype(kype string) bool {
@@ -82,12 +83,26 @@ func callStackPushLocal(ident string, kype string) bool {
 	v.IsLocal = true
 	v.Ident = ident
 	v.IsLValue = false
-	v.BlockLevel = currBlockLevel
+	v.BlockLevel = blockLevel
 	v.BytesCount = v.RealSize
 
 	callStack = append(callStack, v)
 
 	return true
+}
+
+func callStackPushRetAddrAndFramePointer() {
+	var v IntInfo
+
+	v.IsSigned = false
+	v.RealSize = 0
+	v.IsLocal = false
+	v.Ident = ""
+	v.IsLValue = true
+	v.BlockLevel = blockLevel
+	v.BytesCount = v.RealSize
+
+	callStack = append(callStack, v)
 }
 
 func setReturnIntInfo(kype string) bool {
@@ -112,20 +127,20 @@ func setReturnIntInfo(kype string) bool {
 	v.IsLocal = false
 	v.Ident = ""
 	v.IsLValue = false
-	v.BlockLevel = 0
+	v.BlockLevel = blockLevel
 	v.BytesCount = v.RealSize
 
-	currReturnIntInfo = v
+	returnIntInfo = v
 
 	return true
 }
 
 func incBlockLevel() {
-	currBlockLevel++
+	blockLevel++
 }
 
 func decBlockLevel() {
-	currBlockLevel--
+	blockLevel--
 }
 
 var funcAddrTable map[string]uint64
@@ -157,8 +172,8 @@ func compileFuncList(tn TreeNode) {
 }
 
 func compileFunc(tn TreeNode) {
-	currBlockLevel = 0
-	currReturnIntInfo = IntInfo{}
+	blockLevel = 0
+	returnIntInfo = IntInfo{}
 	callStack = make([]IntInfo, 0)
 	compileTreeChildren(tn.Children)
 }
@@ -168,6 +183,7 @@ func compileFuncIdent(tn TreeNode) {
 }
 
 func compileFuncSig(tn TreeNode) {
+	incBlockLevel()
 	compileTreeChildren(tn.Children)
 }
 
