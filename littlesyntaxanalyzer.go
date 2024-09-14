@@ -567,6 +567,14 @@ func PrintTreeNode(tn TreeNode, level int) {
 	}
 }
 
+func addEmptyStmtReturnToFuncList(tn TreeNode) {
+	for _, f := range tn.Children {
+		var newTreeNode TreeNode
+		newTreeNode.Kype = TNT_STMT_RETURN
+		f.Children[2].Children = append(f.Children[2].Children, newTreeNode)
+	}
+}
+
 func SyntaxAnalyzer(toks []TokenData) TreeNode {
 	curToks = toks
 
@@ -575,6 +583,8 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 	tn.Kype = TNT_ROOT
 
 	tn.Children = append(tn.Children, parseFuncList())
+
+	addEmptyStmtReturnToFuncList(tn.Children[0])
 
 	return tn
 }

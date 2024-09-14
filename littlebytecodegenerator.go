@@ -4,6 +4,19 @@ import (
 	"strconv"
 )
 
+var (
+	OP_HALT  byte = 0x01
+	OP_ECALL byte = 0x02
+
+	OP_CALL   byte = 0x04
+	OP_JUMP   byte = 0x05
+	OP_BRANCH byte = 0x06
+	OP_RETURN byte = 0x07
+
+	OP_PUSH byte = 0x08
+	OP_POP  byte = 0x09
+)
+
 var bytecode []byte
 
 type IntInfo struct {
@@ -102,6 +115,10 @@ func callStackInfoInitFrame() {
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
+func emitOp(op byte) {
+	bytecode = append(bytecode, op)
+}
+
 var rootTreeNode TreeNode
 
 func compileFuncList(tn TreeNode) {
@@ -118,6 +135,7 @@ func compileFuncIdent(tn TreeNode) {
 
 func compileFuncSig(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
+	callStackInfoInitFrame()
 }
 
 func compileFuncParamList(tn TreeNode) {
@@ -147,6 +165,10 @@ func compileFuncReturnType(tn TreeNode) {
 	returnIntInfo = ii
 }
 
+func compileStmtList(tn TreeNode) {
+
+}
+
 func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 	for _, c := range treeNodeChildren {
 		map[TreeNodeType]func(TreeNode){
@@ -163,7 +185,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_FUNC_PARAM_TYPE
 			TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
 
-			// TNT_STMT_LIST
+			TNT_STMT_LIST: compileStmtList,
 
 			// TNT_STMT_DECL
 			// TNT_STMT_DECL_IDENT
@@ -197,6 +219,8 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 
 func BytecodeGenerator(tn TreeNode) []byte {
 	rootTreeNode = tn
+
+	compileTreeNodeChildren(tn.Children)
 
 	return bytecode
 }
