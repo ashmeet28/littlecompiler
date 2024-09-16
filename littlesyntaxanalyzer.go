@@ -251,7 +251,7 @@ func parseStmtList() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_LIST
 
-	for matchTok(TT_LET, TT_IDENT, TT_LPAREN, TT_WHILE, TT_IF, TT_RETURN) {
+	for matchTok(TT_LET, TT_WHILE, TT_IF, TT_RETURN, TT_BREAK, TT_CONTINUE, TT_IDENT, TT_LPAREN) {
 		tn.Children = append(tn.Children, parseStmt())
 	}
 
@@ -549,7 +549,7 @@ func parseStmtBreak() TreeNode {
 func parseStmtContinue() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_CONTINUE
-	consumeTok(TT_BREAK)
+	consumeTok(TT_CONTINUE)
 	consumeTok(TT_NEW_LINE)
 	return tn
 }
@@ -567,11 +567,11 @@ func PrintTreeNode(tn TreeNode, level int) {
 	}
 }
 
-func addEmptyStmtReturnToFuncList(tn TreeNode) {
-	for _, f := range tn.Children {
+func normalizeWholeTree(tn TreeNode) {
+	for _, ftn := range tn.Children[0].Children {
 		var newTreeNode TreeNode
 		newTreeNode.Kype = TNT_STMT_RETURN
-		f.Children[2].Children = append(f.Children[2].Children, newTreeNode)
+		ftn.Children[2].Children = append(ftn.Children[2].Children, newTreeNode)
 	}
 }
 
@@ -584,7 +584,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 
 	tn.Children = append(tn.Children, parseFuncList())
 
-	addEmptyStmtReturnToFuncList(tn.Children[0])
+	normalizeWholeTree(tn)
 
 	return tn
 }

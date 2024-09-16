@@ -115,6 +115,13 @@ func callStackInfoInitFrame() {
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
+type FuncSigInfo struct {
+	ParamListInt []IntInfo
+	ReturnInt    interface{}
+}
+
+var funcListInfo map[string]FuncSigInfo
+
 func emitOp(op byte) {
 	bytecode = append(bytecode, op)
 }
