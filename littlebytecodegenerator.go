@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 )
@@ -21,13 +22,11 @@ var (
 var bytecode []byte
 
 type IntInfo struct {
-	RealSize   int
 	IsSigned   bool
 	BytesCount int
 }
 
 type LocalIntInfo struct {
-	RealSize   int
 	Ident      string
 	IsSigned   bool
 	BlockLevel int
@@ -71,7 +70,6 @@ func getIntInfoFromTypeString(s string) (IntInfo, bool) {
 		return IntInfo{}, false
 	}
 
-	ii.RealSize = int(bitSize) / 8
 	ii.BytesCount = int(bitSize) / 8
 	return ii, true
 }
@@ -175,8 +173,39 @@ func funcListInfoInit(tn TreeNode) {
 
 var funcListAddr map[string]int
 
+func encodeIntInfo(ii IntInfo) byte {
+	var b byte = 0
+	if ii.BytesCount == 1 {
+		b = b | 0b00
+	} else if ii.BytesCount == 2 {
+		b = b | 0b01
+	} else if ii.BytesCount == 4 {
+		b = b | 0b10
+	} else if ii.BytesCount == 8 {
+		b = b | 0b11
+	}
+
+	if ii.IsSigned {
+		b = b | 0b100
+	}
+	return b
+}
+
 func emitOp(op byte) {
 	bytecode = append(bytecode, op)
+}
+
+func emitPushOp(ii IntInfo, v uint64) {
+	bytecode = append(bytecode, OP_PUSH)
+	bytecode = append(bytecode, encodeIntInfo(ii))
+	var vb []byte
+	vb = binary.LittleEndian.AppendUint64(vb, v)
+
+	vb = vb[:ii.BytesCount]
+
+	for _, b := range vb {
+		bytecode = append(bytecode, b)
+	}
 }
 
 var rootTreeNode TreeNode
@@ -189,7 +218,6 @@ func compileFuncList(tn TreeNode) {
 func compileFunc(tn TreeNode) {
 	callStackInfoReset()
 	compileTreeNodeChildren(tn.Children)
-	fmt.Println(callStackInfo)
 }
 
 func compileFuncIdent(tn TreeNode) {
@@ -216,7 +244,6 @@ func compileFuncParam(tn TreeNode) {
 	if !isOk {
 		PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 	}
-	lii.RealSize = ii.RealSize
 	lii.IsSigned = ii.IsSigned
 	lii.BytesCount = ii.BytesCount
 	lii.BlockLevel = blockLevel
@@ -249,12 +276,13 @@ func compileStmtDecl(tn TreeNode) {
 	if !isOk {
 		PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
 	}
-	lii.RealSize = ii.RealSize
 	lii.IsSigned = ii.IsSigned
 	lii.BytesCount = ii.BytesCount
 	lii.BlockLevel = blockLevel
 
 	callStackInfo = append(callStackInfo, lii)
+
+	emitPushOp(ii, 0)
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -317,7 +345,10 @@ func BytecodeGenerator(tn TreeNode) []byte {
 	funcListInfoInit(funcListTreeNode)
 
 	fmt.Println(funcListInfo)
+
 	compileTreeNodeChildren(tn.Children)
+
+	fmt.Printf("%b\n", bytecode)
 
 	return bytecode
 }
