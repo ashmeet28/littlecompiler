@@ -118,6 +118,14 @@ func callStackInfoInitFrame() {
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
+func incBlockLevel() {
+	blockLevel++
+}
+
+func decBlockLevel() {
+	blockLevel--
+}
+
 type FuncSigInfo struct {
 	ParamListInt []IntInfo
 	ReturnInt    interface{}
@@ -165,6 +173,8 @@ func funcListInfoInit(tn TreeNode) {
 	}
 }
 
+var funcListAddr map[string]int
+
 func emitOp(op byte) {
 	bytecode = append(bytecode, op)
 }
@@ -172,15 +182,18 @@ func emitOp(op byte) {
 var rootTreeNode TreeNode
 
 func compileFuncList(tn TreeNode) {
+	funcListAddr = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
 }
 
 func compileFunc(tn TreeNode) {
 	callStackInfoReset()
 	compileTreeNodeChildren(tn.Children)
+	fmt.Println(callStackInfo)
 }
 
 func compileFuncIdent(tn TreeNode) {
+	funcListAddr[string(tn.Tok.Buf)] = len(bytecode)
 }
 
 func compileFuncSig(tn TreeNode) {
@@ -220,6 +233,31 @@ func compileFuncReturnType(tn TreeNode) {
 }
 
 func compileStmtList(tn TreeNode) {
+	incBlockLevel()
+	compileTreeNodeChildren(tn.Children)
+	decBlockLevel()
+}
+
+func compileStmtDecl(tn TreeNode) {
+	stmtDeclIdentTreeNode := tn.Children[0]
+	stmtDeclTypeTreeNode := tn.Children[1]
+
+	var lii LocalIntInfo
+
+	lii.Ident = string(stmtDeclIdentTreeNode.Tok.Buf)
+	ii, isOk := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf))
+	if !isOk {
+		PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
+	}
+	lii.RealSize = ii.RealSize
+	lii.IsSigned = ii.IsSigned
+	lii.BytesCount = ii.BytesCount
+	lii.BlockLevel = blockLevel
+
+	callStackInfo = append(callStackInfo, lii)
+}
+
+func compileStmtReturn(tn TreeNode) {
 
 }
 
@@ -241,7 +279,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 
 			TNT_STMT_LIST: compileStmtList,
 
-			// TNT_STMT_DECL
+			TNT_STMT_DECL: compileStmtDecl,
 			// TNT_STMT_DECL_IDENT
 			// TNT_STMT_DECL_TYPE
 
@@ -254,7 +292,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_IF
 			// TNT_STMT_ELSE
 
-			// TNT_STMT_RETURN
+			TNT_STMT_RETURN: compileStmtReturn,
 			// TNT_STMT_BREAK
 			// TNT_STMT_CONTINUE
 
@@ -279,7 +317,7 @@ func BytecodeGenerator(tn TreeNode) []byte {
 	funcListInfoInit(funcListTreeNode)
 
 	fmt.Println(funcListInfo)
-	// compileTreeNodeChildren(tn.Children)
+	compileTreeNodeChildren(tn.Children)
 
 	return bytecode
 }
