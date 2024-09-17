@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -81,8 +82,10 @@ var framePointer int
 
 var callStackInfo []interface{}
 
+var STARTING_BLOCK_LEVEL int = 1
+
 func callStackInfoReset() {
-	blockLevel = 1
+	blockLevel = STARTING_BLOCK_LEVEL
 	returnIntInfo = nil
 	framePointer = 0
 	callStackInfo = make([]interface{}, 0)
@@ -116,11 +119,58 @@ func callStackInfoInitFrame() {
 }
 
 type FuncSigInfo struct {
-	ParamListInt []IntInfo
+	ParamListInt []LocalIntInfo
 	ReturnInt    interface{}
 }
 
 var funcListInfo map[string]FuncSigInfo
+
+func funcListInfoInit(tn TreeNode) {
+	funcListInfo = make(map[string]FuncSigInfo)
+
+	for _, funcTreeNode := range tn.Children {
+		funcSigTreeNode := funcTreeNode.Children[1]
+		var newFuncSigInfo FuncSigInfo
+		for _, c := range funcSigTreeNode.Children {
+			if c.Kype == TNT_FUNC_PARAM_LIST {
+				for _, funcParmTreeNode := range c.Children {
+					var lii LocalIntInfo
+
+					funcParamIdentTreeNode := funcParmTreeNode.Children[0]
+					funcParamTypeTreeNode := funcParmTreeNode.Children[1]
+
+					lii.Ident = string(funcParamIdentTreeNode.Tok.Buf)
+					ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
+					if !isOk {
+						PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
+					}
+					lii.RealSize = ii.RealSize
+					lii.IsSigned = ii.IsSigned
+					lii.BytesCount = ii.BytesCount
+					lii.BlockLevel = STARTING_BLOCK_LEVEL
+
+					newFuncSigInfo.ParamListInt = append(newFuncSigInfo.ParamListInt, lii)
+				}
+			} else if c.Kype == TNT_FUNC_RETURN_TYPE {
+				funcReturnTypeTreeNode := c
+				ii, isOk := getIntInfoFromTypeString(string(funcReturnTypeTreeNode.Tok.Buf))
+				if !isOk {
+					PrintErrorAndExit(tn.Tok.LineNumber)
+				}
+				newFuncSigInfo.ReturnInt = ii
+			}
+		}
+
+		funcIdentTreeNode := funcTreeNode.Children[0]
+		funcIdent := string(funcIdentTreeNode.Tok.Buf)
+
+		_, doesAlreadyExists := funcListInfo[funcIdent]
+		if doesAlreadyExists {
+			PrintErrorAndExit(funcIdentTreeNode.Tok.LineNumber)
+		}
+		funcListInfo[funcIdent] = newFuncSigInfo
+	}
+}
 
 func emitOp(op byte) {
 	bytecode = append(bytecode, op)
@@ -227,7 +277,12 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 func BytecodeGenerator(tn TreeNode) []byte {
 	rootTreeNode = tn
 
-	compileTreeNodeChildren(tn.Children)
+	funcListTreeNode := rootTreeNode.Children[0]
+
+	funcListInfoInit(funcListTreeNode)
+
+	fmt.Println(funcListInfo)
+	// compileTreeNodeChildren(tn.Children)
 
 	return bytecode
 }
