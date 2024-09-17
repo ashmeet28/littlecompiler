@@ -119,7 +119,7 @@ func callStackInfoInitFrame() {
 }
 
 type FuncSigInfo struct {
-	ParamListInt []LocalIntInfo
+	ParamListInt []IntInfo
 	ReturnInt    interface{}
 }
 
@@ -133,23 +133,16 @@ func funcListInfoInit(tn TreeNode) {
 		var newFuncSigInfo FuncSigInfo
 		for _, c := range funcSigTreeNode.Children {
 			if c.Kype == TNT_FUNC_PARAM_LIST {
-				for _, funcParmTreeNode := range c.Children {
-					var lii LocalIntInfo
-
-					funcParamIdentTreeNode := funcParmTreeNode.Children[0]
+				funcParamListTreeNode := c
+				for _, funcParmTreeNode := range funcParamListTreeNode.Children {
 					funcParamTypeTreeNode := funcParmTreeNode.Children[1]
 
-					lii.Ident = string(funcParamIdentTreeNode.Tok.Buf)
 					ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
 					if !isOk {
 						PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 					}
-					lii.RealSize = ii.RealSize
-					lii.IsSigned = ii.IsSigned
-					lii.BytesCount = ii.BytesCount
-					lii.BlockLevel = STARTING_BLOCK_LEVEL
 
-					newFuncSigInfo.ParamListInt = append(newFuncSigInfo.ParamListInt, lii)
+					newFuncSigInfo.ParamListInt = append(newFuncSigInfo.ParamListInt, ii)
 				}
 			} else if c.Kype == TNT_FUNC_RETURN_TYPE {
 				funcReturnTypeTreeNode := c
@@ -201,10 +194,14 @@ func compileFuncParamList(tn TreeNode) {
 
 func compileFuncParam(tn TreeNode) {
 	var lii LocalIntInfo
-	lii.Ident = string(tn.Children[0].Tok.Buf)
-	ii, isOk := getIntInfoFromTypeString(string(tn.Children[1].Tok.Buf))
+
+	funcParamIdentTreeNode := tn.Children[0]
+	funcParamTypeTreeNode := tn.Children[1]
+
+	lii.Ident = string(funcParamIdentTreeNode.Tok.Buf)
+	ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
 	if !isOk {
-		PrintErrorAndExit(tn.Children[1].Tok.LineNumber)
+		PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 	}
 	lii.RealSize = ii.RealSize
 	lii.IsSigned = ii.IsSigned
