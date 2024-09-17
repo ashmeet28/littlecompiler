@@ -191,6 +191,21 @@ func encodeIntInfo(ii IntInfo) byte {
 	return b
 }
 
+var blankPushOpAddrStack []int
+
+func emitBlankPushOp() {
+	blankPushOpAddrStack = append(blankPushOpAddrStack, len(bytecode))
+	emitPushOp(IntInfo{IsSigned: false, BytesCount: 8}, 0)
+}
+
+func backpatchBlankPushOp(v uint64) {
+	addr := blankPushOpAddrStack[len(blankPushOpAddrStack)-1]
+	for i, b := range binary.LittleEndian.AppendUint64(make([]byte, 0), v) {
+		bytecode[addr+i+2] = b
+	}
+	blankPushOpAddrStack = blankPushOpAddrStack[:len(blankPushOpAddrStack)-1]
+}
+
 func emitOp(op byte) {
 	bytecode = append(bytecode, op)
 }
@@ -198,14 +213,9 @@ func emitOp(op byte) {
 func emitPushOp(ii IntInfo, v uint64) {
 	bytecode = append(bytecode, OP_PUSH)
 	bytecode = append(bytecode, encodeIntInfo(ii))
-	var vb []byte
-	vb = binary.LittleEndian.AppendUint64(vb, v)
 
-	vb = vb[:ii.BytesCount]
-
-	for _, b := range vb {
-		bytecode = append(bytecode, b)
-	}
+	bytecode = append(bytecode,
+		binary.LittleEndian.AppendUint64(make([]byte, 0), v)[:ii.BytesCount]...)
 }
 
 var rootTreeNode TreeNode
@@ -286,7 +296,12 @@ func compileStmtDecl(tn TreeNode) {
 }
 
 func compileStmtReturn(tn TreeNode) {
-
+	if len(tn.Children) == 0 {
+		ii, ok := returnIntInfo.(IntInfo)
+		if ok {
+			emitPushOp(ii, 0)
+		}
+	}
 }
 
 func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
@@ -344,9 +359,27 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	funcListInfoInit(funcListTreeNode)
 
+	sigInfo, ok := funcListInfo["main"]
+
+	if (!ok) || (len(sigInfo.ParamListInt) != 0) || (sigInfo.ReturnInt != nil) {
+		PrintErrorAndExit(0)
+	}
+
+	emitBlankPushOp()
+	emitOp(OP_CALL)
+	emitOp(OP_HALT)
+
 	fmt.Println(funcListInfo)
 
 	compileTreeNodeChildren(tn.Children)
+
+	mainFuncAddr, ok := funcListAddr["main"]
+
+	if !ok {
+		PrintErrorAndExit(0)
+	}
+
+	backpatchBlankPushOp(uint64(mainFuncAddr))
 
 	fmt.Printf("%b\n", bytecode)
 
