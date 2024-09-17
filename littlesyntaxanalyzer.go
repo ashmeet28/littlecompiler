@@ -567,12 +567,14 @@ func PrintTreeNode(tn TreeNode, level int) {
 	}
 }
 
-func normalizeWholeTree(tn TreeNode) {
-	for _, ftn := range tn.Children[0].Children {
+func normalizeWholeTree(tn TreeNode) TreeNode {
+	for _, c := range tn.Children[0].Children {
 		var newTreeNode TreeNode
 		newTreeNode.Kype = TNT_STMT_RETURN
-		ftn.Children[2].Children = append(ftn.Children[2].Children, newTreeNode)
+		c.Children[2].Children = append(c.Children[2].Children, newTreeNode)
 	}
+
+	return tn
 }
 
 func SyntaxAnalyzer(toks []TokenData) TreeNode {
@@ -584,7 +586,7 @@ func SyntaxAnalyzer(toks []TokenData) TreeNode {
 
 	tn.Children = append(tn.Children, parseFuncList())
 
-	normalizeWholeTree(tn)
+	tn = normalizeWholeTree(tn)
 
 	return tn
 }
