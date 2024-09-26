@@ -191,19 +191,16 @@ func encodeIntInfo(ii IntInfo) byte {
 	return b
 }
 
-var blankPushOpAddrStack []int
-
-func emitBlankPushOp() {
-	blankPushOpAddrStack = append(blankPushOpAddrStack, len(bytecode))
+func emitBlankPushOp() int {
+	addr := len(bytecode)
 	emitPushOp(IntInfo{IsSigned: false, BytesCount: 8}, 0)
+	return addr
 }
 
-func backpatchBlankPushOp(v uint64) {
-	addr := blankPushOpAddrStack[len(blankPushOpAddrStack)-1]
+func backpatchBlankPushOp(addr int, v uint64) {
 	for i, b := range binary.LittleEndian.AppendUint64(make([]byte, 0), v) {
 		bytecode[addr+i+2] = b
 	}
-	blankPushOpAddrStack = blankPushOpAddrStack[:len(blankPushOpAddrStack)-1]
 }
 
 func emitOp(op byte) {
@@ -365,7 +362,8 @@ func BytecodeGenerator(tn TreeNode) []byte {
 		PrintErrorAndExit(0)
 	}
 
-	emitBlankPushOp()
+	blankMainFuncAddrAddr := emitBlankPushOp()
+
 	emitOp(OP_CALL)
 	emitOp(OP_HALT)
 
@@ -379,7 +377,7 @@ func BytecodeGenerator(tn TreeNode) []byte {
 		PrintErrorAndExit(0)
 	}
 
-	backpatchBlankPushOp(uint64(mainFuncAddr))
+	backpatchBlankPushOp(blankMainFuncAddrAddr, uint64(mainFuncAddr))
 
 	fmt.Printf("%b\n", bytecode)
 
