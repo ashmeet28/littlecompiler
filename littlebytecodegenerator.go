@@ -10,13 +10,15 @@ var (
 	OP_HALT  byte = 0x01
 	OP_ECALL byte = 0x02
 
-	OP_CALL   byte = 0x04
-	OP_JUMP   byte = 0x05
-	OP_BRANCH byte = 0x06
-	OP_RETURN byte = 0x07
+	OP_CALL         byte = 0x04
+	OP_RETURN       byte = 0x05
+	OP_RETURN_EMPTY byte = 0x06
+	OP_JUMP         byte = 0x07
 
-	OP_PUSH byte = 0x08
-	OP_POP  byte = 0x09
+	OP_BRANCH byte = 0x08
+
+	OP_PUSH byte = 0x0c
+	OP_POP  byte = 0x0d
 )
 
 var bytecode []byte
@@ -135,12 +137,17 @@ func funcListInfoInit(tn TreeNode) {
 	funcListInfo = make(map[string]FuncSigInfo)
 
 	for _, funcTreeNode := range tn.Children {
+
 		funcSigTreeNode := funcTreeNode.Children[1]
 		var newFuncSigInfo FuncSigInfo
+
 		for _, c := range funcSigTreeNode.Children {
+
 			if c.Kype == TNT_FUNC_PARAM_LIST {
 				funcParamListTreeNode := c
+
 				for _, funcParmTreeNode := range funcParamListTreeNode.Children {
+
 					funcParamTypeTreeNode := funcParmTreeNode.Children[1]
 
 					ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
@@ -149,15 +156,20 @@ func funcListInfoInit(tn TreeNode) {
 					}
 
 					newFuncSigInfo.ParamListInt = append(newFuncSigInfo.ParamListInt, ii)
+
 				}
+
 			} else if c.Kype == TNT_FUNC_RETURN_TYPE {
+
 				funcReturnTypeTreeNode := c
 				ii, isOk := getIntInfoFromTypeString(string(funcReturnTypeTreeNode.Tok.Buf))
 				if !isOk {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
 				newFuncSigInfo.ReturnInt = ii
+
 			}
+
 		}
 
 		funcIdentTreeNode := funcTreeNode.Children[0]
@@ -167,6 +179,7 @@ func funcListInfoInit(tn TreeNode) {
 		if doesAlreadyExists {
 			PrintErrorAndExit(funcIdentTreeNode.Tok.LineNumber)
 		}
+
 		funcListInfo[funcIdent] = newFuncSigInfo
 	}
 }
@@ -174,15 +187,16 @@ func funcListInfoInit(tn TreeNode) {
 var funcListAddr map[string]int
 
 func encodeIntInfo(ii IntInfo) byte {
-	var b byte = 0
+	var b byte
+
 	if ii.BytesCount == 1 {
-		b = b | 0b00
+		b = 0b00
 	} else if ii.BytesCount == 2 {
-		b = b | 0b01
+		b = 0b01
 	} else if ii.BytesCount == 4 {
-		b = b | 0b10
+		b = 0b10
 	} else if ii.BytesCount == 8 {
-		b = b | 0b11
+		b = 0b11
 	}
 
 	if ii.IsSigned {
@@ -213,6 +227,11 @@ func emitPushOp(ii IntInfo, v uint64) {
 
 	bytecode = append(bytecode,
 		binary.LittleEndian.AppendUint64(make([]byte, 0), v)[:ii.BytesCount]...)
+}
+
+func emitReturn(ii IntInfo) {
+	bytecode = append(bytecode, OP_RETURN)
+	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
 var rootTreeNode TreeNode
@@ -292,11 +311,18 @@ func compileStmtDecl(tn TreeNode) {
 	emitPushOp(ii, 0)
 }
 
+func compileStmtExpr(tn TreeNode) {
+
+}
+
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
 		ii, ok := returnIntInfo.(IntInfo)
 		if ok {
 			emitPushOp(ii, 0)
+			emitReturn(ii)
+		} else {
+			emitOp(OP_RETURN_EMPTY)
 		}
 	}
 }
@@ -323,7 +349,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_DECL_IDENT
 			// TNT_STMT_DECL_TYPE
 
-			// TNT_STMT_EXPR
+			TNT_STMT_EXPR: compileStmtExpr,
 			// TNT_STMT_ASSIGN
 			// TNT_STMT_STORE_STRING
 			// TNT_STMT_STRING

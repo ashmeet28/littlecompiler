@@ -568,10 +568,15 @@ func PrintTreeNode(tn TreeNode, level int) {
 }
 
 func normalizeWholeTree(tn TreeNode) TreeNode {
-	for _, c := range tn.Children[0].Children {
+	funcListTreeNode := tn.Children[0]
+
+	for _, c := range funcListTreeNode.Children {
 		var newTreeNode TreeNode
 		newTreeNode.Kype = TNT_STMT_RETURN
-		c.Children[2].Children = append(c.Children[2].Children, newTreeNode)
+
+		stmtListNode := c.Children[2]
+		stmtListNode.Children = append(stmtListNode.Children, newTreeNode)
+		c.Children[2] = stmtListNode
 	}
 
 	return tn
