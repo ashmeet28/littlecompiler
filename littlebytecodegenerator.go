@@ -76,6 +76,8 @@ func getIntInfoFromTypeString(s string) (IntInfo, bool) {
 	return ii, true
 }
 
+var ADDR_BYTES_COUNT int = 8
+
 var blockLevel int
 var returnIntInfo interface{}
 var framePointer int
@@ -91,31 +93,79 @@ func callStackInfoReset() {
 	callStackInfo = make([]interface{}, 0)
 }
 
+func callStackInfoGetBytesCount(i interface{}) (int, bool) {
+	switch v := i.(type) {
+	case IntInfo:
+		return v.BytesCount, true
+	case LocalIntInfo:
+		return v.BytesCount, true
+	case LocalIntAddrInfo:
+		return v.BytesCount, true
+	case PrevFrameAddrInfo:
+		return v.BytesCount, true
+	case ReturnAddrInfo:
+		return v.BytesCount, true
+	default:
+		return 0, false
+	}
+}
+
 func callStackInfoGetTotalBytesCount() int {
-	var c int
+	var totalBytesCount int
 	for _, i := range callStackInfo {
-		switch v := i.(type) {
-		case IntInfo:
-			c += v.BytesCount
-		case LocalIntInfo:
-			c += v.BytesCount
-		case LocalIntAddrInfo:
-			c += v.BytesCount
-		case PrevFrameAddrInfo:
-			c += v.BytesCount
-		case ReturnAddrInfo:
-			c += v.BytesCount
-		default:
+		currBytesCount, ok := callStackInfoGetBytesCount(i)
+		if ok {
+			totalBytesCount += currBytesCount
+		} else {
 			PrintErrorAndExit(0)
 		}
 	}
-	return c
+
+	return totalBytesCount
 }
 
 func callStackInfoInitFrame() {
-	callStackInfo = append(callStackInfo, PrevFrameAddrInfo{BytesCount: 8})
-	callStackInfo = append(callStackInfo, ReturnAddrInfo{BytesCount: 8})
+	callStackInfo = append(callStackInfo, PrevFrameAddrInfo{BytesCount: ADDR_BYTES_COUNT})
+	callStackInfo = append(callStackInfo, ReturnAddrInfo{BytesCount: ADDR_BYTES_COUNT})
 	framePointer = callStackInfoGetTotalBytesCount()
+}
+
+func callStackInfoFindLocalIntInfo(localIntInfoIdent string) (LocalIntInfo, bool) {
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		lii, ok := callStackInfo[i].(LocalIntInfo)
+		if ok && (lii.Ident == localIntInfoIdent) {
+			return lii, true
+		}
+	}
+	return LocalIntInfo{}, false
+}
+
+func callStackInfoGetLocalIntAddr(localIntInfoIdent string) (int, bool) {
+	var hasFound bool = false
+
+	var totalBytesCount int
+
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		if hasFound {
+			currBytesCount, ok := callStackInfoGetBytesCount(callStackInfo[i])
+			if ok {
+				totalBytesCount += currBytesCount
+			} else {
+				PrintErrorAndExit(0)
+			}
+		} else {
+			lii, ok := callStackInfo[i].(LocalIntInfo)
+			if ok && (lii.Ident == localIntInfoIdent) {
+				hasFound = true
+			}
+		}
+	}
+
+	if !hasFound {
+		return 0, false
+	}
+
+	return (totalBytesCount - framePointer), true
 }
 
 func incBlockLevel() {
@@ -207,7 +257,7 @@ func encodeIntInfo(ii IntInfo) byte {
 
 func emitBlankPushOp() int {
 	addr := len(bytecode)
-	emitPushOp(IntInfo{IsSigned: false, BytesCount: 8}, 0)
+	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, 0)
 	return addr
 }
 
@@ -312,7 +362,30 @@ func compileStmtDecl(tn TreeNode) {
 }
 
 func compileStmtExpr(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
 
+func compileExpr(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
+
+func compileExprInt(tn TreeNode) {
+	if lii, ok := callStackInfoFindLocalIntInfo(string(tn.Tok.Buf)); ok {
+		var liai LocalIntAddrInfo
+		liai.RealSize = lii.BytesCount
+		liai.IsSigned = lii.IsSigned
+		liai.BytesCount = ADDR_BYTES_COUNT
+
+		callStackInfo = append(callStackInfo, liai)
+
+		if addr, ok := callStackInfoGetLocalIntAddr(string(tn.Tok.Buf)); ok {
+			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(addr))
+		} else {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+	} else {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -362,8 +435,8 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_BREAK
 			// TNT_STMT_CONTINUE
 
-			// TNT_EXPR
-			// TNT_EXPR_INT
+			TNT_EXPR:     compileExpr,
+			TNT_EXPR_INT: compileExprInt,
 			// TNT_EXPR_FUNC
 			// TNT_EXPR_FUNC_PARM_LIST
 			// TNT_EXPR_FUNC_PARM
