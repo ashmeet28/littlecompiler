@@ -49,6 +49,10 @@ type ReturnAddrInfo struct {
 	BytesCount int
 }
 
+type EmptyInfo struct {
+	BytesCount int
+}
+
 func getIntInfoFromTypeString(s string) (IntInfo, bool) {
 	_, ok := map[string]bool{"i8": true, "i16": true, "i32": true, "i64": true,
 		"u8": true, "u16": true, "u32": true, "u64": true}[s]
@@ -105,6 +109,8 @@ func callStackInfoGetBytesCount(i interface{}) (int, bool) {
 		return v.BytesCount, true
 	case ReturnAddrInfo:
 		return v.BytesCount, true
+	case EmptyInfo:
+		return v.BytesCount, true
 	default:
 		return 0, false
 	}
@@ -113,8 +119,7 @@ func callStackInfoGetBytesCount(i interface{}) (int, bool) {
 func callStackInfoGetTotalBytesCount() int {
 	var totalBytesCount int
 	for _, i := range callStackInfo {
-		currBytesCount, ok := callStackInfoGetBytesCount(i)
-		if ok {
+		if currBytesCount, ok := callStackInfoGetBytesCount(i); ok {
 			totalBytesCount += currBytesCount
 		} else {
 			PrintErrorAndExit(0)
@@ -147,8 +152,7 @@ func callStackInfoGetLocalIntAddr(localIntInfoIdent string) (int, bool) {
 
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
 		if hasFound {
-			currBytesCount, ok := callStackInfoGetBytesCount(callStackInfo[i])
-			if ok {
+			if currBytesCount, ok := callStackInfoGetBytesCount(callStackInfo[i]); ok {
 				totalBytesCount += currBytesCount
 			} else {
 				PrintErrorAndExit(0)
@@ -284,6 +288,11 @@ func emitReturn(ii IntInfo) {
 	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
+func emitPopOp(ii IntInfo) {
+	bytecode = append(bytecode, OP_POP)
+	bytecode = append(bytecode, encodeIntInfo(ii))
+}
+
 var rootTreeNode TreeNode
 
 func compileFuncList(tn TreeNode) {
@@ -363,6 +372,18 @@ func compileStmtDecl(tn TreeNode) {
 
 func compileStmtExpr(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
+
+	switch v := callStackInfo[len(callStackInfo)-1].(type) {
+	case IntInfo:
+		emitPopOp(v)
+	case LocalIntAddrInfo:
+		emitPopOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT})
+	case EmptyInfo:
+	default:
+		PrintErrorAndExit(0)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
 }
 
 func compileExpr(tn TreeNode) {
@@ -381,7 +402,7 @@ func compileExprInt(tn TreeNode) {
 		if addr, ok := callStackInfoGetLocalIntAddr(string(tn.Tok.Buf)); ok {
 			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(addr))
 		} else {
-			PrintErrorAndExit(tn.Tok.LineNumber)
+			PrintErrorAndExit(0)
 		}
 	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
