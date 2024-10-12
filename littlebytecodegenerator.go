@@ -10,12 +10,13 @@ var (
 	OP_HALT  byte = 0x01
 	OP_ECALL byte = 0x02
 
-	OP_CALL         byte = 0x04
-	OP_RETURN       byte = 0x05
-	OP_RETURN_EMPTY byte = 0x06
-	OP_JUMP         byte = 0x07
+	OP_CALL             byte = 0x04
+	OP_RETURN           byte = 0x05
+	OP_RETURN_INT       byte = 0x06
+	OP_RETURN_LOCAL_INT byte = 0x07
 
-	OP_BRANCH byte = 0x08
+	OP_JUMP   byte = 0x08
+	OP_BRANCH byte = 0x09
 
 	OP_PUSH byte = 0x0c
 	OP_POP  byte = 0x0d
@@ -283,8 +284,8 @@ func emitPushOp(ii IntInfo, v uint64) {
 		binary.LittleEndian.AppendUint64(make([]byte, 0), v)[:ii.BytesCount]...)
 }
 
-func emitReturn(ii IntInfo) {
-	bytecode = append(bytecode, OP_RETURN)
+func emitReturnInt(ii IntInfo) {
+	bytecode = append(bytecode, OP_RETURN_INT)
 	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
@@ -414,9 +415,9 @@ func compileStmtReturn(tn TreeNode) {
 		ii, ok := returnIntInfo.(IntInfo)
 		if ok {
 			emitPushOp(ii, 0)
-			emitReturn(ii)
+			emitReturnInt(ii)
 		} else {
-			emitOp(OP_RETURN_EMPTY)
+			emitOp(OP_RETURN)
 		}
 	}
 }
