@@ -10,10 +10,9 @@ var (
 	OP_HALT  byte = 0x01
 	OP_ECALL byte = 0x02
 
-	OP_CALL             byte = 0x04
-	OP_RETURN           byte = 0x05
-	OP_RETURN_INT       byte = 0x06
-	OP_RETURN_LOCAL_INT byte = 0x07
+	OP_CALL         byte = 0x04
+	OP_RETURN       byte = 0x05
+	OP_RETURN_EMPTY byte = 0x06
 
 	OP_JUMP   byte = 0x08
 	OP_BRANCH byte = 0x09
@@ -260,6 +259,10 @@ func encodeIntInfo(ii IntInfo) byte {
 	return b
 }
 
+func encodeLocalIntAddrInfo(liai LocalIntAddrInfo) byte {
+	return (encodeIntInfo(IntInfo{IsSigned: liai.IsSigned, BytesCount: liai.RealSize}) | 0b1000)
+}
+
 func emitBlankPushOp() int {
 	addr := len(bytecode)
 	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, 0)
@@ -284,9 +287,23 @@ func emitPushOp(ii IntInfo, v uint64) {
 		binary.LittleEndian.AppendUint64(make([]byte, 0), v)[:ii.BytesCount]...)
 }
 
-func emitReturnInt(ii IntInfo) {
-	bytecode = append(bytecode, OP_RETURN_INT)
-	bytecode = append(bytecode, encodeIntInfo(ii))
+func emitReturn(i interface{}) bool {
+	switch v := i.(type) {
+	case IntInfo:
+		bytecode = append(bytecode, OP_RETURN)
+		bytecode = append(bytecode, encodeIntInfo(v))
+		return true
+	case LocalIntAddrInfo:
+		bytecode = append(bytecode, OP_RETURN)
+		bytecode = append(bytecode, encodeLocalIntAddrInfo(v))
+		return true
+	default:
+		return false
+	}
+}
+
+func emitReturnEmpty() {
+	bytecode = append(bytecode, OP_RETURN_EMPTY)
 }
 
 func emitPopOp(ii IntInfo) {
@@ -412,12 +429,13 @@ func compileExprInt(tn TreeNode) {
 
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
-		ii, ok := returnIntInfo.(IntInfo)
-		if ok {
+		if ii, ok := returnIntInfo.(IntInfo); ok {
 			emitPushOp(ii, 0)
-			emitReturnInt(ii)
+			if ok := emitReturn(ii); !ok {
+				PrintErrorAndExit(0)
+			}
 		} else {
-			emitOp(OP_RETURN)
+			emitReturnEmpty()
 		}
 	}
 }
