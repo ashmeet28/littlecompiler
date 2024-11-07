@@ -19,6 +19,20 @@ var (
 
 	OP_PUSH byte = 0x0c
 	OP_POP  byte = 0x0d
+
+	OP_ADD byte = 0x10
+	OP_SUB byte = 0x11
+
+	OP_AND byte = 0x14
+	OP_OR  byte = 0x15
+	OP_XOR byte = 0x16
+
+	OP_SL byte = 0x18
+	OP_SR byte = 0x19
+
+	OP_MUL byte = 0x1c
+	OP_DIV byte = 0x1d
+	OP_REM byte = 0x1e
 )
 
 var bytecode []byte
@@ -427,6 +441,10 @@ func compileExprInt(tn TreeNode) {
 	}
 }
 
+func compileExprBinary(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
+
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
 		if ii, ok := returnIntInfo.(IntInfo); ok {
@@ -483,7 +501,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_EXPR_INT_LIT
 			// TNT_EXPR_NEG_INT_LIT
 			// TNT_EXPR_CHAR
-			// TNT_EXPR_BINARY
+			TNT_EXPR_BINARY: compileExprBinary,
 		}[c.Kype](c)
 	}
 }
