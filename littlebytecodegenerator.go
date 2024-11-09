@@ -325,6 +325,37 @@ func emitPopOp(ii IntInfo) {
 	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
+func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) bool {
+	var vb1 byte = 0
+	var vb2 byte = 0
+
+	switch v := v1.(type) {
+	case IntInfo:
+		vb1 = encodeIntInfo(v)
+	case LocalIntAddrInfo:
+		vb1 = encodeLocalIntAddrInfo(v)
+	default:
+		return false
+	}
+
+	switch v := v2.(type) {
+	case IntInfo:
+		vb2 = encodeIntInfo(v)
+	case LocalIntAddrInfo:
+		vb2 = encodeLocalIntAddrInfo(v)
+	default:
+		return false
+	}
+
+	if ((vb1 & 0b111) == (vb2 & 0b111)) || (op == OP_SL) || (op == OP_SR) {
+		bytecode = append(bytecode, op)
+		bytecode = append(bytecode, (vb2<<4)|vb1)
+		return true
+	}
+
+	return false
+}
+
 var rootTreeNode TreeNode
 
 func compileFuncList(tn TreeNode) {
@@ -443,6 +474,31 @@ func compileExprInt(tn TreeNode) {
 
 func compileExprBinary(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
+
+	op, ok := map[TokenType]byte{
+		TT_ADD: OP_ADD,
+		TT_SUB: OP_SUB,
+
+		TT_AND: OP_AND,
+		TT_OR:  OP_OR,
+		TT_XOR: OP_XOR,
+
+		TT_SHL: OP_SL,
+		TT_SHR: OP_SR,
+
+		TT_MUL: OP_MUL,
+		TT_QUO: OP_DIV,
+		TT_REM: OP_REM,
+	}[tn.Tok.Kype]
+
+	if !ok {
+		PrintErrorAndExit(0)
+	}
+
+	if ok := emitBinaryOp(op,
+		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -536,7 +592,7 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	backpatchBlankPushOp(blankMainFuncAddrAddr, uint64(mainFuncAddr))
 
-	fmt.Printf("%b\n", bytecode)
+	fmt.Printf("%x\n", bytecode)
 
 	return bytecode
 }
