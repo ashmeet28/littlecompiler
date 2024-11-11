@@ -325,17 +325,21 @@ func emitPopOp(ii IntInfo) {
 	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
-func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) bool {
+func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	var vb1 byte = 0
 	var vb2 byte = 0
+
+	var ii IntInfo
 
 	switch v := v1.(type) {
 	case IntInfo:
 		vb1 = encodeIntInfo(v)
+		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.BytesCount}
 	case LocalIntAddrInfo:
 		vb1 = encodeLocalIntAddrInfo(v)
+		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.RealSize}
 	default:
-		return false
+		return false, IntInfo{}
 	}
 
 	switch v := v2.(type) {
@@ -344,16 +348,17 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) bool {
 	case LocalIntAddrInfo:
 		vb2 = encodeLocalIntAddrInfo(v)
 	default:
-		return false
+		return false, IntInfo{}
 	}
 
 	if ((vb1 & 0b111) == (vb2 & 0b111)) || (op == OP_SL) || (op == OP_SR) {
 		bytecode = append(bytecode, op)
 		bytecode = append(bytecode, (vb2<<4)|vb1)
-		return true
+
+		return true, ii
 	}
 
-	return false
+	return false, IntInfo{}
 }
 
 var rootTreeNode TreeNode
@@ -495,8 +500,12 @@ func compileExprBinary(tn TreeNode) {
 		PrintErrorAndExit(0)
 	}
 
-	if ok := emitBinaryOp(op,
-		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); !ok {
+	if ok, ii := emitBinaryOp(op,
+		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); ok {
+
+		callStackInfo = callStackInfo[:len(callStackInfo)-2]
+		callStackInfo = append(callStackInfo, ii)
+	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
 }
