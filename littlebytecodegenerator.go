@@ -454,6 +454,19 @@ func compileStmtExpr(tn TreeNode) {
 	callStackInfo = callStackInfo[:len(callStackInfo)-1]
 }
 
+func compileStmtReturn(tn TreeNode) {
+	if len(tn.Children) == 0 {
+		if ii, ok := returnIntInfo.(IntInfo); ok {
+			emitPushOp(ii, 0)
+			if ok := emitReturn(ii); !ok {
+				PrintErrorAndExit(0)
+			}
+		} else {
+			emitReturnEmpty()
+		}
+	}
+}
+
 func compileExpr(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 }
@@ -475,6 +488,22 @@ func compileExprInt(tn TreeNode) {
 	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
+}
+
+func compileExprFunc(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
+
+func compileExprFuncParmList(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
+
+func compileExprFuncParm(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+}
+
+func compileExprIntLit(tn TreeNode) {
+
 }
 
 func compileExprBinary(tn TreeNode) {
@@ -507,19 +536,6 @@ func compileExprBinary(tn TreeNode) {
 		callStackInfo = append(callStackInfo, ii)
 	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
-	}
-}
-
-func compileStmtReturn(tn TreeNode) {
-	if len(tn.Children) == 0 {
-		if ii, ok := returnIntInfo.(IntInfo); ok {
-			emitPushOp(ii, 0)
-			if ok := emitReturn(ii); !ok {
-				PrintErrorAndExit(0)
-			}
-		} else {
-			emitReturnEmpty()
-		}
 	}
 }
 
@@ -558,12 +574,12 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_BREAK
 			// TNT_STMT_CONTINUE
 
-			TNT_EXPR:     compileExpr,
-			TNT_EXPR_INT: compileExprInt,
-			// TNT_EXPR_FUNC
-			// TNT_EXPR_FUNC_PARM_LIST
-			// TNT_EXPR_FUNC_PARM
-			// TNT_EXPR_INT_LIT
+			TNT_EXPR:                compileExpr,
+			TNT_EXPR_INT:            compileExprInt,
+			TNT_EXPR_FUNC:           compileExprFunc,
+			TNT_EXPR_FUNC_PARM_LIST: compileExprFuncParmList,
+			TNT_EXPR_FUNC_PARM:      compileExprFuncParm,
+			TNT_EXPR_INT_LIT:        compileExprIntLit,
 			// TNT_EXPR_NEG_INT_LIT
 			// TNT_EXPR_CHAR
 			TNT_EXPR_BINARY: compileExprBinary,
