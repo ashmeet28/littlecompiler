@@ -490,8 +490,53 @@ func compileExprInt(tn TreeNode) {
 	}
 }
 
+func unescapeExprChar(b []byte) (byte, bool) {
+	if len(b) < 3 || (b[0] != 0x27) || (b[len(b)-1] != 0x27) {
+		return 0, false
+	}
+
+	if b[1] == 0x5c {
+		if len(b) == 4 && (b[2] == 0x5c || b[2] == 0x27) {
+			return b[2], true
+		} else {
+			return 0, false
+		}
+	} else if len(b) == 3 {
+		return b[1], true
+	} else {
+		return 0, false
+	}
+}
+
 func compileExprFunc(tn TreeNode) {
-	compileTreeNodeChildren(tn.Children)
+	if ii, ok := getIntInfoFromTypeString(string(tn.Tok.Buf)); ok {
+		exprFuncParmListTreeNode := tn.Children[0]
+
+		if len(exprFuncParmListTreeNode.Children) != 1 {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+
+		exprFuncParmTreeNode := exprFuncParmListTreeNode.Children[0]
+
+		switch exprFuncParmTreeNode.Children[0].Kype {
+		case TNT_EXPR_CHAR:
+			exprCharTreeNode := exprFuncParmTreeNode.Children[0]
+			if b, ok := unescapeExprChar(exprCharTreeNode.Tok.Buf); ok {
+				if ii.BytesCount == 1 && (!ii.IsSigned) {
+					emitPushOp(ii, uint64(b))
+					callStackInfo = append(callStackInfo, ii)
+				} else {
+					PrintErrorAndExit(exprCharTreeNode.Tok.LineNumber)
+				}
+			} else {
+				PrintErrorAndExit(exprCharTreeNode.Tok.LineNumber)
+			}
+		default:
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+	} else {
+		compileTreeNodeChildren(tn.Children)
+	}
 }
 
 func compileExprFuncParmList(tn TreeNode) {
@@ -500,10 +545,6 @@ func compileExprFuncParmList(tn TreeNode) {
 
 func compileExprFuncParm(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
-}
-
-func compileExprIntLit(tn TreeNode) {
-
 }
 
 func compileExprBinary(tn TreeNode) {
@@ -579,7 +620,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			TNT_EXPR_FUNC:           compileExprFunc,
 			TNT_EXPR_FUNC_PARM_LIST: compileExprFuncParmList,
 			TNT_EXPR_FUNC_PARM:      compileExprFuncParm,
-			TNT_EXPR_INT_LIT:        compileExprIntLit,
+			// TNT_EXPR_INT_LIT
 			// TNT_EXPR_NEG_INT_LIT
 			// TNT_EXPR_CHAR
 			TNT_EXPR_BINARY: compileExprBinary,
