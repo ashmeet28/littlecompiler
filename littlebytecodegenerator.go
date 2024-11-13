@@ -425,8 +425,8 @@ func compileStmtDecl(tn TreeNode) {
 	var lii LocalIntInfo
 
 	lii.Ident = string(stmtDeclIdentTreeNode.Tok.Buf)
-	ii, isOk := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf))
-	if !isOk {
+	ii, ok := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf))
+	if !ok {
 		PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
 	}
 	lii.IsSigned = ii.IsSigned
