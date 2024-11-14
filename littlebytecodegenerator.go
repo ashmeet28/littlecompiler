@@ -422,9 +422,10 @@ func compileStmtDecl(tn TreeNode) {
 	stmtDeclIdentTreeNode := tn.Children[0]
 	stmtDeclTypeTreeNode := tn.Children[1]
 
-	if lii, ok := callStackInfoFindLocalIntInfo(string(stmtDeclTypeTreeNode.Tok.Buf)); ok {
-		if lii.BlockLevel == blockLevel {
-			PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
+	if lii, ok := callStackInfoFindLocalIntInfo(string(stmtDeclIdentTreeNode.Tok.Buf)); ok {
+		if (lii.BlockLevel == blockLevel) ||
+			((lii.BlockLevel == STARTING_BLOCK_LEVEL) && (blockLevel == STARTING_BLOCK_LEVEL+1)) {
+			PrintErrorAndExit(stmtDeclIdentTreeNode.Tok.LineNumber)
 		}
 	}
 
