@@ -218,8 +218,8 @@ func funcListInfoInit(tn TreeNode) {
 
 					funcParamTypeTreeNode := funcParmTreeNode.Children[1]
 
-					ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
-					if !isOk {
+					ii, ok := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
+					if !ok {
 						PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 					}
 
@@ -230,8 +230,8 @@ func funcListInfoInit(tn TreeNode) {
 			} else if c.Kype == TNT_FUNC_RETURN_TYPE {
 
 				funcReturnTypeTreeNode := c
-				ii, isOk := getIntInfoFromTypeString(string(funcReturnTypeTreeNode.Tok.Buf))
-				if !isOk {
+				ii, ok := getIntInfoFromTypeString(string(funcReturnTypeTreeNode.Tok.Buf))
+				if !ok {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
 				newFuncSigInfo.ReturnInt = ii
@@ -393,8 +393,8 @@ func compileFuncParam(tn TreeNode) {
 	funcParamTypeTreeNode := tn.Children[1]
 
 	lii.Ident = string(funcParamIdentTreeNode.Tok.Buf)
-	ii, isOk := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
-	if !isOk {
+	ii, ok := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
+	if !ok {
 		PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 	}
 	lii.IsSigned = ii.IsSigned
@@ -405,8 +405,8 @@ func compileFuncParam(tn TreeNode) {
 }
 
 func compileFuncReturnType(tn TreeNode) {
-	ii, isOk := getIntInfoFromTypeString(string(tn.Tok.Buf))
-	if !isOk {
+	ii, ok := getIntInfoFromTypeString(string(tn.Tok.Buf))
+	if !ok {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
 	returnIntInfo = ii
@@ -421,6 +421,12 @@ func compileStmtList(tn TreeNode) {
 func compileStmtDecl(tn TreeNode) {
 	stmtDeclIdentTreeNode := tn.Children[0]
 	stmtDeclTypeTreeNode := tn.Children[1]
+
+	if lii, ok := callStackInfoFindLocalIntInfo(string(stmtDeclTypeTreeNode.Tok.Buf)); ok {
+		if lii.BlockLevel == blockLevel {
+			PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
+		}
+	}
 
 	var lii LocalIntInfo
 
