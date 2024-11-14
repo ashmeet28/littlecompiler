@@ -192,6 +192,12 @@ func incBlockLevel() {
 
 func decBlockLevel() {
 	blockLevel--
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		if lii, ok := callStackInfo[i].(LocalIntInfo); ok && (lii.BlockLevel > blockLevel) {
+			emitPopOp(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.BytesCount})
+			callStackInfo = callStackInfo[:len(callStackInfo)-1]
+		}
+	}
 }
 
 type FuncSigInfo struct {
