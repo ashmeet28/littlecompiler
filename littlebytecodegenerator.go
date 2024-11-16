@@ -544,6 +544,18 @@ func compileExprFunc(tn TreeNode) {
 			} else {
 				PrintErrorAndExit(exprCharTreeNode.Tok.LineNumber)
 			}
+		case TNT_EXPR_INT_LIT:
+			exprIntLitTreeNode := exprFuncParmTreeNode.Children[0]
+
+			if v, err := strconv.ParseUint(string(exprIntLitTreeNode.Tok.Buf), 0, 64); err == nil {
+				if v > (^uint64(0))>>((8-ii.BytesCount)*8) {
+					PrintErrorAndExit(exprIntLitTreeNode.Tok.LineNumber)
+				}
+				emitPushOp(ii, v)
+				callStackInfo = append(callStackInfo, ii)
+			} else {
+				PrintErrorAndExit(exprIntLitTreeNode.Tok.LineNumber)
+			}
 		default:
 			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
