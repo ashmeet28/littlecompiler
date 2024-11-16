@@ -548,7 +548,9 @@ func compileExprFunc(tn TreeNode) {
 		case TNT_EXPR_INT_LIT:
 			exprIntLitTreeNode := exprFuncParmTreeNode.Children[0]
 
-			if v, err := strconv.ParseUint(string(exprIntLitTreeNode.Tok.Buf), 0, 64); err == nil {
+			if v, err :=
+				strconv.ParseUint(string(exprIntLitTreeNode.Tok.Buf), 0, 64); err == nil {
+
 				if v > ((^uint64(0)) >> ((8 - ii.BytesCount) * 8)) {
 					PrintErrorAndExit(exprIntLitTreeNode.Tok.LineNumber)
 				}
@@ -561,7 +563,9 @@ func compileExprFunc(tn TreeNode) {
 		case TNT_EXPR_NEG_INT_LIT:
 			exprNegIntLitTreeNode := exprFuncParmTreeNode.Children[0]
 
-			if v, err := strconv.ParseUint(string(exprNegIntLitTreeNode.Tok.Buf), 0, 64); err == nil {
+			if v, err :=
+				strconv.ParseUint(string(exprNegIntLitTreeNode.Tok.Buf), 0, 64); err == nil {
+
 				if v > (uint64(1) << ((ii.BytesCount * 8) - 1)) {
 					PrintErrorAndExit(exprNegIntLitTreeNode.Tok.LineNumber)
 				}
