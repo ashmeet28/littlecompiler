@@ -7,14 +7,14 @@ import (
 )
 
 var (
-	OP_HALT byte = 0x01
-	// OP_ECALL byte = 0x02
+	OP_HALT  byte = 0x01
+	OP_ECALL byte = 0x02
 
 	OP_CALL   byte = 0x04
 	OP_RETURN byte = 0x05
 
-	// OP_JUMP   byte = 0x08
-	// OP_BRANCH byte = 0x09
+	OP_JUMP   byte = 0x08
+	OP_BRANCH byte = 0x09
 
 	OP_PUSH byte = 0x0c
 	OP_POP  byte = 0x0d
@@ -233,9 +233,12 @@ func funcListInfoInit(tn TreeNode) {
 		funcIdentTreeNode := funcTreeNode.Children[0]
 		funcIdent := string(funcIdentTreeNode.Tok.Buf)
 
-		_, doesAlreadyExists := funcListInfo[funcIdent]
-		if doesAlreadyExists {
+		if _, doesAlreadyExists := funcListInfo[funcIdent]; doesAlreadyExists {
 			PrintErrorAndExit(funcIdentTreeNode.Tok.LineNumber)
+		}
+
+		if _, ok := newFuncSigInfo.ReturnInt.(IntInfo); !ok {
+			newFuncSigInfo.ReturnInt = VoidInfo{BytesCount: 0}
 		}
 
 		funcListInfo[funcIdent] = newFuncSigInfo
@@ -294,6 +297,13 @@ func emitReturn(i interface{}) bool {
 	case LocalIntPointerInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeLocalIntPointerInfo(v))
+		bytecode = append(bytecode,
+			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
+
+		return true
+	case VoidInfo:
+		bytecode = append(bytecode, OP_RETURN)
+		bytecode = append(bytecode, encodeIntInfo(IntInfo{IsSigned: false, BytesCount: 0}))
 		bytecode = append(bytecode,
 			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
@@ -456,9 +466,9 @@ func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
 		if ii, ok := returnIntInfo.(IntInfo); ok {
 			emitPushOp(ii, 0)
-			if ok := emitReturn(ii); !ok {
-				PrintErrorAndExit(0)
-			}
+		}
+		if ok := emitReturn(returnIntInfo); !ok {
+			PrintErrorAndExit(0)
 		}
 	}
 }
@@ -702,7 +712,11 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	sigInfo, ok := funcListInfo["main"]
 
-	if (!ok) || (len(sigInfo.ParamListInt) != 0) || (sigInfo.ReturnInt != nil) {
+	if (!ok) || (len(sigInfo.ParamListInt) != 0) {
+		PrintErrorAndExit(0)
+	}
+
+	if _, ok := sigInfo.ReturnInt.(VoidInfo); !ok {
 		PrintErrorAndExit(0)
 	}
 
