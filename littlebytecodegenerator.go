@@ -367,8 +367,6 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	return false, IntInfo{}
 }
 
-var rootTreeNode TreeNode
-
 func compileFuncList(tn TreeNode) {
 	funcListAddr = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
@@ -446,9 +444,9 @@ func compileStmtDecl(tn TreeNode) {
 	lii.BytesCount = ii.BytesCount
 	lii.BlockLevel = blockLevel
 
-	callStackInfo = append(callStackInfo, lii)
-
 	emitPushOp(ii, 0)
+
+	callStackInfo = append(callStackInfo, lii)
 }
 
 func compileStmtExpr(tn TreeNode) {
@@ -491,10 +489,9 @@ func compileExprInt(tn TreeNode) {
 		liai.IsSigned = lii.IsSigned
 		liai.BytesCount = ADDR_BYTES_COUNT
 
-		callStackInfo = append(callStackInfo, liai)
-
 		if addr, ok := callStackInfoGetLocalIntAddr(string(tn.Tok.Buf)); ok {
 			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(addr))
+			callStackInfo = append(callStackInfo, liai)
 		} else {
 			PrintErrorAndExit(0)
 		}
@@ -590,6 +587,22 @@ func compileExprFuncParmList(tn TreeNode) {
 
 func compileExprFuncParm(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
+
+	if v, ok := callStackInfo[len(callStackInfo)-1].(LocalIntAddrInfo); ok {
+		ii := IntInfo{IsSigned: v.IsSigned, BytesCount: v.RealSize}
+
+		emitPushOp(ii, 0)
+		callStackInfo = append(callStackInfo, ii)
+
+		if ok, ii := emitBinaryOp(OP_ADD,
+			callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); ok {
+
+			callStackInfo = callStackInfo[:len(callStackInfo)-2]
+			callStackInfo = append(callStackInfo, ii)
+		} else {
+			PrintErrorAndExit(0)
+		}
+	}
 }
 
 func compileExprBinary(tn TreeNode) {
@@ -674,7 +687,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 }
 
 func BytecodeGenerator(tn TreeNode) []byte {
-	rootTreeNode = tn
+	rootTreeNode := tn
 
 	funcListTreeNode := rootTreeNode.Children[0]
 
