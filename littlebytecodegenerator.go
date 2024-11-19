@@ -7,15 +7,14 @@ import (
 )
 
 var (
-	OP_HALT  byte = 0x01
-	OP_ECALL byte = 0x02
+	OP_HALT byte = 0x01
+	// OP_ECALL byte = 0x02
 
-	OP_CALL         byte = 0x04
-	OP_RETURN       byte = 0x05
-	OP_RETURN_EMPTY byte = 0x06
+	OP_CALL   byte = 0x04
+	OP_RETURN byte = 0x05
 
-	OP_JUMP   byte = 0x08
-	OP_BRANCH byte = 0x09
+	// OP_JUMP   byte = 0x08
+	// OP_BRANCH byte = 0x09
 
 	OP_PUSH byte = 0x0c
 	OP_POP  byte = 0x0d
@@ -49,30 +48,30 @@ type LocalIntInfo struct {
 	BytesCount int
 }
 
-type LocalIntAddrInfo struct {
+type LocalIntPointerInfo struct {
 	RealSize   int
 	IsSigned   bool
 	BytesCount int
 }
 
-type PrevFrameAddrInfo struct {
+type FramePointerInfo struct {
 	BytesCount int
 }
 
-type ReturnAddrInfo struct {
+type ReturnAddressInfo struct {
 	BytesCount int
 }
 
-type EmptyInfo struct {
+type VoidInfo struct {
 	BytesCount int
 }
 
 func getIntInfoFromTypeString(s string) (IntInfo, bool) {
-	_, ok := map[string]bool{"i8": true, "i16": true, "i32": true, "i64": true,
-		"u8": true, "u16": true, "u32": true, "u64": true}[s]
+	if _, ok := map[string]bool{"i8": true, "i16": true, "i32": true, "i64": true,
+		"u8": true, "u16": true, "u32": true, "u64": true}[s]; !ok {
 
-	if !ok {
 		return IntInfo{}, false
+
 	}
 
 	var ii IntInfo
@@ -85,13 +84,12 @@ func getIntInfoFromTypeString(s string) (IntInfo, bool) {
 		return IntInfo{}, false
 	}
 
-	bitSize, err := strconv.ParseInt(s[1:], 10, 64)
-	if err != nil {
+	if bitSize, err := strconv.ParseUint(s[1:], 10, 64); err == nil {
+		ii.BytesCount = int(bitSize) / 8
+		return ii, true
+	} else {
 		return IntInfo{}, false
 	}
-
-	ii.BytesCount = int(bitSize) / 8
-	return ii, true
 }
 
 var ADDR_BYTES_COUNT int = 8
@@ -106,7 +104,7 @@ var STARTING_BLOCK_LEVEL int = 1
 
 func callStackInfoReset() {
 	blockLevel = STARTING_BLOCK_LEVEL
-	returnIntInfo = nil
+	returnIntInfo = VoidInfo{BytesCount: 0}
 	framePointer = 0
 	callStackInfo = make([]interface{}, 0)
 }
@@ -117,13 +115,13 @@ func callStackInfoGetBytesCount(i interface{}) (int, bool) {
 		return v.BytesCount, true
 	case LocalIntInfo:
 		return v.BytesCount, true
-	case LocalIntAddrInfo:
+	case LocalIntPointerInfo:
 		return v.BytesCount, true
-	case PrevFrameAddrInfo:
+	case FramePointerInfo:
 		return v.BytesCount, true
-	case ReturnAddrInfo:
+	case ReturnAddressInfo:
 		return v.BytesCount, true
-	case EmptyInfo:
+	case VoidInfo:
 		return v.BytesCount, true
 	default:
 		return 0, false
@@ -144,8 +142,8 @@ func callStackInfoGetTotalBytesCount() int {
 }
 
 func callStackInfoInitFrame() {
-	callStackInfo = append(callStackInfo, PrevFrameAddrInfo{BytesCount: ADDR_BYTES_COUNT})
-	callStackInfo = append(callStackInfo, ReturnAddrInfo{BytesCount: ADDR_BYTES_COUNT})
+	callStackInfo = append(callStackInfo, FramePointerInfo{BytesCount: ADDR_BYTES_COUNT})
+	callStackInfo = append(callStackInfo, ReturnAddressInfo{BytesCount: ADDR_BYTES_COUNT})
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
@@ -159,7 +157,7 @@ func callStackInfoFindLocalIntInfo(localIntInfoIdent string) (LocalIntInfo, bool
 	return LocalIntInfo{}, false
 }
 
-func callStackInfoGetLocalIntAddr(localIntInfoIdent string) (int, bool) {
+func callStackInfoGetLocalIntPointer(localIntInfoIdent string) (uint64, bool) {
 	var hasFound bool = false
 
 	var totalBytesCount int
@@ -183,21 +181,7 @@ func callStackInfoGetLocalIntAddr(localIntInfoIdent string) (int, bool) {
 		return 0, false
 	}
 
-	return (totalBytesCount - framePointer), true
-}
-
-func incBlockLevel() {
-	blockLevel++
-}
-
-func decBlockLevel() {
-	blockLevel--
-	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		if lii, ok := callStackInfo[i].(LocalIntInfo); ok && (lii.BlockLevel > blockLevel) {
-			emitPopOp(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.BytesCount})
-			callStackInfo = callStackInfo[:len(callStackInfo)-1]
-		}
-	}
+	return (uint64(totalBytesCount) - uint64(framePointer)), true
 }
 
 type FuncSigInfo struct {
@@ -261,26 +245,17 @@ func funcListInfoInit(tn TreeNode) {
 var funcListAddr map[string]int
 
 func encodeIntInfo(ii IntInfo) byte {
-	var b byte
-
-	if ii.BytesCount == 1 {
-		b = 0b00
-	} else if ii.BytesCount == 2 {
-		b = 0b01
-	} else if ii.BytesCount == 4 {
-		b = 0b10
-	} else if ii.BytesCount == 8 {
-		b = 0b11
-	}
+	var b byte = byte(ii.BytesCount)
 
 	if ii.IsSigned {
-		b = b | 0b100
+		return b | 0b10000
 	}
+
 	return b
 }
 
-func encodeLocalIntAddrInfo(liai LocalIntAddrInfo) byte {
-	return (encodeIntInfo(IntInfo{IsSigned: liai.IsSigned, BytesCount: liai.RealSize}) | 0b1000)
+func encodeLocalIntPointerInfo(lipi LocalIntPointerInfo) byte {
+	return (encodeIntInfo(IntInfo{IsSigned: lipi.IsSigned, BytesCount: lipi.RealSize}) | 0b100000)
 }
 
 func emitBlankPushOp() int {
@@ -312,18 +287,20 @@ func emitReturn(i interface{}) bool {
 	case IntInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeIntInfo(v))
+		bytecode = append(bytecode,
+			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
+
 		return true
-	case LocalIntAddrInfo:
+	case LocalIntPointerInfo:
 		bytecode = append(bytecode, OP_RETURN)
-		bytecode = append(bytecode, encodeLocalIntAddrInfo(v))
+		bytecode = append(bytecode, encodeLocalIntPointerInfo(v))
+		bytecode = append(bytecode,
+			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
+
 		return true
 	default:
 		return false
 	}
-}
-
-func emitReturnEmpty() {
-	bytecode = append(bytecode, OP_RETURN_EMPTY)
 }
 
 func emitPopOp(ii IntInfo) {
@@ -341,8 +318,8 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	case IntInfo:
 		vb1 = encodeIntInfo(v)
 		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.BytesCount}
-	case LocalIntAddrInfo:
-		vb1 = encodeLocalIntAddrInfo(v)
+	case LocalIntPointerInfo:
+		vb1 = encodeLocalIntPointerInfo(v)
 		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.RealSize}
 	default:
 		return false, IntInfo{}
@@ -351,15 +328,16 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	switch v := v2.(type) {
 	case IntInfo:
 		vb2 = encodeIntInfo(v)
-	case LocalIntAddrInfo:
-		vb2 = encodeLocalIntAddrInfo(v)
+	case LocalIntPointerInfo:
+		vb2 = encodeLocalIntPointerInfo(v)
 	default:
 		return false, IntInfo{}
 	}
 
-	if ((vb1 & 0b111) == (vb2 & 0b111)) || (op == OP_SL) || (op == OP_SR) {
+	if ((vb1 & 0b11111) == (vb2 & 0b11111)) || (op == OP_SL) || (op == OP_SR) {
 		bytecode = append(bytecode, op)
-		bytecode = append(bytecode, (vb2<<4)|vb1)
+		bytecode = append(bytecode, vb1)
+		bytecode = append(bytecode, vb2)
 
 		return true, ii
 	}
@@ -417,9 +395,18 @@ func compileFuncReturnType(tn TreeNode) {
 }
 
 func compileStmtList(tn TreeNode) {
-	incBlockLevel()
+	blockLevel++
+
 	compileTreeNodeChildren(tn.Children)
-	decBlockLevel()
+
+	blockLevel--
+
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		if lii, ok := callStackInfo[i].(LocalIntInfo); ok && (lii.BlockLevel > blockLevel) {
+			emitPopOp(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.BytesCount})
+			callStackInfo = callStackInfo[:len(callStackInfo)-1]
+		}
+	}
 }
 
 func compileStmtDecl(tn TreeNode) {
@@ -455,9 +442,9 @@ func compileStmtExpr(tn TreeNode) {
 	switch v := callStackInfo[len(callStackInfo)-1].(type) {
 	case IntInfo:
 		emitPopOp(v)
-	case LocalIntAddrInfo:
+	case LocalIntPointerInfo:
 		emitPopOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT})
-	case EmptyInfo:
+	case VoidInfo:
 	default:
 		PrintErrorAndExit(0)
 	}
@@ -472,8 +459,6 @@ func compileStmtReturn(tn TreeNode) {
 			if ok := emitReturn(ii); !ok {
 				PrintErrorAndExit(0)
 			}
-		} else {
-			emitReturnEmpty()
 		}
 	}
 }
@@ -484,14 +469,14 @@ func compileExpr(tn TreeNode) {
 
 func compileExprInt(tn TreeNode) {
 	if lii, ok := callStackInfoFindLocalIntInfo(string(tn.Tok.Buf)); ok {
-		var liai LocalIntAddrInfo
-		liai.RealSize = lii.BytesCount
-		liai.IsSigned = lii.IsSigned
-		liai.BytesCount = ADDR_BYTES_COUNT
+		var lipi LocalIntPointerInfo
+		lipi.RealSize = lii.BytesCount
+		lipi.IsSigned = lii.IsSigned
+		lipi.BytesCount = ADDR_BYTES_COUNT
 
-		if addr, ok := callStackInfoGetLocalIntAddr(string(tn.Tok.Buf)); ok {
-			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(addr))
-			callStackInfo = append(callStackInfo, liai)
+		if addr, ok := callStackInfoGetLocalIntPointer(string(tn.Tok.Buf)); ok {
+			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, addr)
+			callStackInfo = append(callStackInfo, lipi)
 		} else {
 			PrintErrorAndExit(0)
 		}
@@ -610,8 +595,8 @@ func compileExprFuncParmList(tn TreeNode) {
 func compileExprFuncParm(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 
-	if liai, ok := callStackInfo[len(callStackInfo)-1].(LocalIntAddrInfo); ok {
-		ii := IntInfo{IsSigned: liai.IsSigned, BytesCount: liai.RealSize}
+	if lipi, ok := callStackInfo[len(callStackInfo)-1].(LocalIntPointerInfo); ok {
+		ii := IntInfo{IsSigned: lipi.IsSigned, BytesCount: lipi.RealSize}
 
 		emitPushOp(ii, 0)
 		callStackInfo = append(callStackInfo, ii)
