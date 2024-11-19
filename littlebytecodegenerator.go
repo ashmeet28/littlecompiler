@@ -415,6 +415,8 @@ func compileStmtList(tn TreeNode) {
 		if lii, ok := callStackInfo[i].(LocalIntInfo); ok && (lii.BlockLevel > blockLevel) {
 			emitPopOp(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.BytesCount})
 			callStackInfo = callStackInfo[:len(callStackInfo)-1]
+		} else {
+			break
 		}
 	}
 }
