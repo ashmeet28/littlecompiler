@@ -578,6 +578,28 @@ func compileExprFunc(tn TreeNode) {
 		}
 	} else {
 		compileTreeNodeChildren(tn.Children)
+
+		if fsi, ok := funcListInfo[string(tn.Tok.Buf)]; ok {
+			if len(callStackInfo) < len(fsi.ParamListInt) {
+				PrintErrorAndExit(tn.Tok.LineNumber)
+			}
+
+			for i, sigParam := range fsi.ParamListInt {
+				if stackParam, ok :=
+					callStackInfo[len(callStackInfo)-len(fsi.ParamListInt)+i].(IntInfo); ok {
+
+					if (stackParam.BytesCount != sigParam.BytesCount) ||
+						(stackParam.IsSigned != sigParam.IsSigned) {
+						PrintErrorAndExit(tn.Tok.LineNumber)
+					}
+
+				} else {
+					PrintErrorAndExit(tn.Tok.LineNumber)
+				}
+			}
+		} else {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
 	}
 }
 
