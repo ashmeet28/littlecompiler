@@ -610,8 +610,8 @@ func compileExprFuncParmList(tn TreeNode) {
 func compileExprFuncParm(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 
-	if v, ok := callStackInfo[len(callStackInfo)-1].(LocalIntAddrInfo); ok {
-		ii := IntInfo{IsSigned: v.IsSigned, BytesCount: v.RealSize}
+	if liai, ok := callStackInfo[len(callStackInfo)-1].(LocalIntAddrInfo); ok {
+		ii := IntInfo{IsSigned: liai.IsSigned, BytesCount: liai.RealSize}
 
 		emitPushOp(ii, 0)
 		callStackInfo = append(callStackInfo, ii)
