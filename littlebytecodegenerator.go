@@ -245,7 +245,9 @@ func funcListInfoInit(tn TreeNode) {
 	}
 }
 
-var funcListAddr map[string]int
+var funcAddrList map[string]int
+
+var blankFuncAddrList map[string]int
 
 func encodeIntInfo(ii IntInfo) byte {
 	var b byte = byte(ii.BytesCount)
@@ -285,6 +287,11 @@ func emitPushOp(ii IntInfo, v uint64) {
 		binary.LittleEndian.AppendUint64(make([]byte, 0), v)[:ii.BytesCount]...)
 }
 
+func emitPopOp(ii IntInfo) {
+	bytecode = append(bytecode, OP_POP)
+	bytecode = append(bytecode, encodeIntInfo(ii))
+}
+
 func emitReturn(i interface{}) bool {
 	switch v := i.(type) {
 	case IntInfo:
@@ -311,11 +318,6 @@ func emitReturn(i interface{}) bool {
 	default:
 		return false
 	}
-}
-
-func emitPopOp(ii IntInfo) {
-	bytecode = append(bytecode, OP_POP)
-	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
 func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
@@ -356,7 +358,7 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 }
 
 func compileFuncList(tn TreeNode) {
-	funcListAddr = make(map[string]int)
+	funcAddrList = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
 }
 
@@ -366,7 +368,7 @@ func compileFunc(tn TreeNode) {
 }
 
 func compileFuncIdent(tn TreeNode) {
-	funcListAddr[string(tn.Tok.Buf)] = len(bytecode)
+	funcAddrList[string(tn.Tok.Buf)] = len(bytecode)
 }
 
 func compileFuncSig(tn TreeNode) {
@@ -597,6 +599,9 @@ func compileExprFunc(tn TreeNode) {
 		} else {
 			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
+
+		blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
+		emitOp(OP_CALL)
 	}
 }
 
@@ -706,9 +711,7 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 }
 
 func BytecodeGenerator(tn TreeNode) []byte {
-	rootTreeNode := tn
-
-	funcListTreeNode := rootTreeNode.Children[0]
+	funcListTreeNode := tn.Children[0]
 
 	funcListInfoInit(funcListTreeNode)
 
@@ -722,22 +725,22 @@ func BytecodeGenerator(tn TreeNode) []byte {
 		PrintErrorAndExit(0)
 	}
 
-	blankMainFuncAddrAddr := emitBlankPushOp()
+	blankFuncAddrList = map[string]int{}
+
+	blankFuncAddrList["main"] = emitBlankPushOp()
 
 	emitOp(OP_CALL)
 	emitOp(OP_HALT)
 
-	fmt.Println(funcListInfo)
-
 	compileTreeNodeChildren(tn.Children)
 
-	mainFuncAddr, ok := funcListAddr["main"]
-
-	if !ok {
-		PrintErrorAndExit(0)
+	for funcIdent, blankPushOpAddr := range blankFuncAddrList {
+		if funcAddr, ok := funcAddrList[funcIdent]; ok {
+			backpatchBlankPushOp(blankPushOpAddr, uint64(funcAddr)-(uint64(blankPushOpAddr)+10))
+		} else {
+			PrintErrorAndExit(0)
+		}
 	}
-
-	backpatchBlankPushOp(blankMainFuncAddrAddr, uint64(mainFuncAddr))
 
 	fmt.Printf("%x\n", bytecode)
 
