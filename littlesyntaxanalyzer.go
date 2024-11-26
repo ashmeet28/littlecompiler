@@ -328,7 +328,7 @@ func parseStmtAssign(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_ASSIGN
 
-	consumeTok(TT_ASSIGN)
+	tn.Tok = consumeTok(TT_ASSIGN)
 
 	tn.Children = append(tn.Children, exprTreeNode)
 	tn.Children = append(tn.Children, parseExpr())
