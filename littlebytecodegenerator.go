@@ -16,8 +16,9 @@ var (
 	OP_JUMP   byte = 0x08
 	OP_BRANCH byte = 0x09
 
-	OP_PUSH byte = 0x0c
-	OP_POP  byte = 0x0d
+	OP_PUSH   byte = 0x0c
+	OP_POP    byte = 0x0d
+	OP_ASSIGN byte = 0x0e
 
 	OP_ADD byte = 0x10
 	OP_SUB byte = 0x11
@@ -360,6 +361,37 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	return false, IntInfo{}
 }
 
+func emitAssignOp(v1 interface{}, v2 interface{}) bool {
+	var vb1 byte = 0
+	var vb2 byte = 0
+
+	switch v := v1.(type) {
+	case LocalIntInfo:
+		vb1 = encodeLocalIntInfo(v)
+	default:
+		return false
+	}
+
+	switch v := v2.(type) {
+	case IntInfo:
+		vb2 = encodeIntInfo(v)
+	case LocalIntInfo:
+		vb2 = encodeLocalIntInfo(v)
+	default:
+		return false
+	}
+
+	if (vb1 & 0b11111) == (vb2 & 0b11111) {
+		bytecode = append(bytecode, OP_ASSIGN)
+		bytecode = append(bytecode, vb1)
+		bytecode = append(bytecode, vb2)
+
+		return true
+	}
+
+	return false
+}
+
 func compileFuncList(tn TreeNode) {
 	funcAddrList = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
@@ -469,6 +501,15 @@ func compileStmtExpr(tn TreeNode) {
 	}
 
 	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+}
+
+func compileStmtAssign(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
+
+	if ok := emitAssignOp(
+		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -689,8 +730,8 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_DECL_IDENT
 			// TNT_STMT_DECL_TYPE
 
-			TNT_STMT_EXPR: compileStmtExpr,
-			// TNT_STMT_ASSIGN
+			TNT_STMT_EXPR:   compileStmtExpr,
+			TNT_STMT_ASSIGN: compileStmtAssign,
 			// TNT_STMT_STORE_STRING
 			// TNT_STMT_STRING
 
