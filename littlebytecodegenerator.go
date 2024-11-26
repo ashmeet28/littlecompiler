@@ -41,14 +41,14 @@ type IntInfo struct {
 	BytesCount int
 }
 
-type LocalIntInfo struct {
+type LocalIntStorageInfo struct {
 	Ident      string
 	IsSigned   bool
 	BlockLevel int
 	BytesCount int
 }
 
-type LocalIntPointerInfo struct {
+type LocalIntInfo struct {
 	RealSize   int
 	IsSigned   bool
 	BytesCount int
@@ -113,9 +113,9 @@ func callStackInfoGetBytesCount(i interface{}) (int, bool) {
 	switch v := i.(type) {
 	case IntInfo:
 		return v.BytesCount, true
-	case LocalIntInfo:
+	case LocalIntStorageInfo:
 		return v.BytesCount, true
-	case LocalIntPointerInfo:
+	case LocalIntInfo:
 		return v.BytesCount, true
 	case FramePointerInfo:
 		return v.BytesCount, true
@@ -147,17 +147,20 @@ func callStackInfoInitFrame() {
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
-func callStackInfoFindLocalIntInfo(localIntInfoIdent string) (LocalIntInfo, bool) {
+func callStackInfoFindLocalIntStorageInfo(
+	localIntStorageInfoIdent string) (LocalIntStorageInfo, bool) {
+
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		lii, ok := callStackInfo[i].(LocalIntInfo)
-		if ok && (lii.Ident == localIntInfoIdent) {
-			return lii, true
+		lisi, ok := callStackInfo[i].(LocalIntStorageInfo)
+		if ok && (lisi.Ident == localIntStorageInfoIdent) {
+			return lisi, true
 		}
 	}
-	return LocalIntInfo{}, false
+
+	return LocalIntStorageInfo{}, false
 }
 
-func callStackInfoGetLocalIntPointer(localIntInfoIdent string) (uint64, bool) {
+func callStackInfoGetLocalInt(localIntStorageInfoIdent string) (uint64, bool) {
 	var hasFound bool = false
 
 	var totalBytesCount int
@@ -170,8 +173,8 @@ func callStackInfoGetLocalIntPointer(localIntInfoIdent string) (uint64, bool) {
 				PrintErrorAndExit(0)
 			}
 		} else {
-			lii, ok := callStackInfo[i].(LocalIntInfo)
-			if ok && (lii.Ident == localIntInfoIdent) {
+			lisi, ok := callStackInfo[i].(LocalIntStorageInfo)
+			if ok && (lisi.Ident == localIntStorageInfoIdent) {
 				hasFound = true
 			}
 		}
@@ -259,8 +262,8 @@ func encodeIntInfo(ii IntInfo) byte {
 	return b
 }
 
-func encodeLocalIntPointerInfo(lipi LocalIntPointerInfo) byte {
-	return (encodeIntInfo(IntInfo{IsSigned: lipi.IsSigned, BytesCount: lipi.RealSize}) | 0b100000)
+func encodeLocalIntInfo(lii LocalIntInfo) byte {
+	return (encodeIntInfo(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.RealSize}) | 0b100000)
 }
 
 func emitBlankPushOp() int {
@@ -301,9 +304,9 @@ func emitReturn(i interface{}) bool {
 			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
 		return true
-	case LocalIntPointerInfo:
+	case LocalIntInfo:
 		bytecode = append(bytecode, OP_RETURN)
-		bytecode = append(bytecode, encodeLocalIntPointerInfo(v))
+		bytecode = append(bytecode, encodeLocalIntInfo(v))
 		bytecode = append(bytecode,
 			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
@@ -330,8 +333,8 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	case IntInfo:
 		vb1 = encodeIntInfo(v)
 		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.BytesCount}
-	case LocalIntPointerInfo:
-		vb1 = encodeLocalIntPointerInfo(v)
+	case LocalIntInfo:
+		vb1 = encodeLocalIntInfo(v)
 		ii = IntInfo{IsSigned: v.IsSigned, BytesCount: v.RealSize}
 	default:
 		return false, IntInfo{}
@@ -340,8 +343,8 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 	switch v := v2.(type) {
 	case IntInfo:
 		vb2 = encodeIntInfo(v)
-	case LocalIntPointerInfo:
-		vb2 = encodeLocalIntPointerInfo(v)
+	case LocalIntInfo:
+		vb2 = encodeLocalIntInfo(v)
 	default:
 		return false, IntInfo{}
 	}
@@ -381,21 +384,21 @@ func compileFuncParamList(tn TreeNode) {
 }
 
 func compileFuncParam(tn TreeNode) {
-	var lii LocalIntInfo
+	var lisi LocalIntStorageInfo
 
 	funcParamIdentTreeNode := tn.Children[0]
 	funcParamTypeTreeNode := tn.Children[1]
 
-	lii.Ident = string(funcParamIdentTreeNode.Tok.Buf)
+	lisi.Ident = string(funcParamIdentTreeNode.Tok.Buf)
 	ii, ok := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
 	if !ok {
 		PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 	}
-	lii.IsSigned = ii.IsSigned
-	lii.BytesCount = ii.BytesCount
-	lii.BlockLevel = blockLevel
+	lisi.IsSigned = ii.IsSigned
+	lisi.BytesCount = ii.BytesCount
+	lisi.BlockLevel = blockLevel
 
-	callStackInfo = append(callStackInfo, lii)
+	callStackInfo = append(callStackInfo, lisi)
 }
 
 func compileFuncReturnType(tn TreeNode) {
@@ -414,8 +417,8 @@ func compileStmtList(tn TreeNode) {
 	blockLevel--
 
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		if lii, ok := callStackInfo[i].(LocalIntInfo); ok && (lii.BlockLevel > blockLevel) {
-			emitPopOp(IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.BytesCount})
+		if lisi, ok := callStackInfo[i].(LocalIntStorageInfo); ok && (lisi.BlockLevel > blockLevel) {
+			emitPopOp(IntInfo{IsSigned: lisi.IsSigned, BytesCount: lisi.BytesCount})
 			callStackInfo = callStackInfo[:len(callStackInfo)-1]
 		} else {
 			break
@@ -427,27 +430,27 @@ func compileStmtDecl(tn TreeNode) {
 	stmtDeclIdentTreeNode := tn.Children[0]
 	stmtDeclTypeTreeNode := tn.Children[1]
 
-	if lii, ok := callStackInfoFindLocalIntInfo(string(stmtDeclIdentTreeNode.Tok.Buf)); ok {
-		if (lii.BlockLevel == blockLevel) ||
-			((lii.BlockLevel == STARTING_BLOCK_LEVEL) && (blockLevel == STARTING_BLOCK_LEVEL+1)) {
+	if lisi, ok := callStackInfoFindLocalIntStorageInfo(string(stmtDeclIdentTreeNode.Tok.Buf)); ok {
+		if (lisi.BlockLevel == blockLevel) ||
+			((lisi.BlockLevel == STARTING_BLOCK_LEVEL) && (blockLevel == STARTING_BLOCK_LEVEL+1)) {
 			PrintErrorAndExit(stmtDeclIdentTreeNode.Tok.LineNumber)
 		}
 	}
 
-	var lii LocalIntInfo
+	var lisi LocalIntStorageInfo
 
-	lii.Ident = string(stmtDeclIdentTreeNode.Tok.Buf)
+	lisi.Ident = string(stmtDeclIdentTreeNode.Tok.Buf)
 	ii, ok := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf))
 	if !ok {
 		PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
 	}
-	lii.IsSigned = ii.IsSigned
-	lii.BytesCount = ii.BytesCount
-	lii.BlockLevel = blockLevel
+	lisi.IsSigned = ii.IsSigned
+	lisi.BytesCount = ii.BytesCount
+	lisi.BlockLevel = blockLevel
 
 	emitPushOp(ii, 0)
 
-	callStackInfo = append(callStackInfo, lii)
+	callStackInfo = append(callStackInfo, lisi)
 }
 
 func compileStmtExpr(tn TreeNode) {
@@ -456,7 +459,7 @@ func compileStmtExpr(tn TreeNode) {
 	switch v := callStackInfo[len(callStackInfo)-1].(type) {
 	case IntInfo:
 		emitPopOp(v)
-	case LocalIntPointerInfo:
+	case LocalIntInfo:
 		emitPopOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT})
 	case VoidInfo:
 	default:
@@ -482,15 +485,15 @@ func compileExpr(tn TreeNode) {
 }
 
 func compileExprInt(tn TreeNode) {
-	if lii, ok := callStackInfoFindLocalIntInfo(string(tn.Tok.Buf)); ok {
-		var lipi LocalIntPointerInfo
-		lipi.RealSize = lii.BytesCount
-		lipi.IsSigned = lii.IsSigned
-		lipi.BytesCount = ADDR_BYTES_COUNT
+	if lisi, ok := callStackInfoFindLocalIntStorageInfo(string(tn.Tok.Buf)); ok {
+		var lii LocalIntInfo
+		lii.RealSize = lisi.BytesCount
+		lii.IsSigned = lisi.IsSigned
+		lii.BytesCount = ADDR_BYTES_COUNT
 
-		if addr, ok := callStackInfoGetLocalIntPointer(string(tn.Tok.Buf)); ok {
+		if addr, ok := callStackInfoGetLocalInt(string(tn.Tok.Buf)); ok {
 			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, addr)
-			callStackInfo = append(callStackInfo, lipi)
+			callStackInfo = append(callStackInfo, lii)
 		} else {
 			PrintErrorAndExit(0)
 		}
@@ -612,8 +615,8 @@ func compileExprFuncParmList(tn TreeNode) {
 func compileExprFuncParm(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 
-	if lipi, ok := callStackInfo[len(callStackInfo)-1].(LocalIntPointerInfo); ok {
-		ii := IntInfo{IsSigned: lipi.IsSigned, BytesCount: lipi.RealSize}
+	if lii, ok := callStackInfo[len(callStackInfo)-1].(LocalIntInfo); ok {
+		ii := IntInfo{IsSigned: lii.IsSigned, BytesCount: lii.RealSize}
 
 		emitPushOp(ii, 0)
 		callStackInfo = append(callStackInfo, ii)
