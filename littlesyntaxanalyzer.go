@@ -341,7 +341,7 @@ func parseStmtStoreString(exprTreeNode TreeNode) TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_STORE_STRING
 
-	consumeTok(TT_ARROW)
+	tn.Tok = consumeTok(TT_ARROW)
 
 	tn.Children = append(tn.Children, exprTreeNode)
 	tn.Children = append(tn.Children, parseStmtString())

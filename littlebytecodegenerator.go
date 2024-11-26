@@ -33,6 +33,11 @@ var (
 	OP_MUL byte = 0x1c
 	OP_DIV byte = 0x1d
 	OP_REM byte = 0x1e
+
+	OP_LOAD  byte = 0x20
+	OP_STORE byte = 0x21
+
+	OP_STORE_STRING byte = 0x22
 )
 
 var bytecode []byte
@@ -386,6 +391,28 @@ func emitAssignOp(v1 interface{}, v2 interface{}) bool {
 	return false
 }
 
+func emitStoreStringOp(a interface{}, b []byte) bool {
+	var vb byte
+
+	switch v := a.(type) {
+	case LocalIntInfo:
+		if (v.RealSize == 8) && (!v.IsSigned) {
+			vb = encodeLocalIntInfo(v)
+		} else {
+			return false
+		}
+	default:
+		return false
+	}
+
+	bytecode = append(bytecode, OP_STORE_STRING)
+	bytecode = append(bytecode, vb)
+	bytecode = append(bytecode, b...)
+	bytecode = append(bytecode, 0)
+
+	return true
+}
+
 func compileFuncList(tn TreeNode) {
 	funcAddrList = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
@@ -505,6 +532,55 @@ func compileStmtAssign(tn TreeNode) {
 
 		callStackInfo = callStackInfo[:len(callStackInfo)-2]
 		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+}
+
+func unescapeStmtString(b []byte) (bool, []byte) {
+	var nb []byte
+
+	if len(b) < 3 || (b[0] != 0x22) || (b[len(b)-1] != 0x22) {
+		return false, nb
+	}
+
+	b = b[1 : len(b)-1]
+
+	for len(b) != 0 {
+		if b[0] == 0x5c {
+			b = b[1:]
+
+			if len(b) == 0 {
+				return false, nb
+			}
+
+			if (b[0] == 0x22) || (b[0] == 0x5c) {
+				nb = append(nb, b[0])
+				b = b[1:]
+			} else {
+				return false, nb
+			}
+		} else {
+			nb = append(nb, b[0])
+			b = b[1:]
+		}
+	}
+
+	return true, nb
+}
+
+func compileStmtStoreString(tn TreeNode) {
+	exprTreeNode := tn.Children[0]
+	stmtStringTreeNode := tn.Children[1]
+
+	compileExpr(exprTreeNode)
+
+	if ok, b := unescapeStmtString(stmtStringTreeNode.Tok.Buf); ok {
+		if ok := emitStoreStringOp(callStackInfo[len(callStackInfo)-1], b); ok {
+			callStackInfo = callStackInfo[:len(callStackInfo)-1]
+		} else {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+	} else {
+		PrintErrorAndExit(stmtStringTreeNode.Tok.LineNumber)
 	}
 }
 
@@ -729,9 +805,9 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_DECL_IDENT
 			// TNT_STMT_DECL_TYPE
 
-			TNT_STMT_EXPR:   compileStmtExpr,
-			TNT_STMT_ASSIGN: compileStmtAssign,
-			// TNT_STMT_STORE_STRING
+			TNT_STMT_EXPR:         compileStmtExpr,
+			TNT_STMT_ASSIGN:       compileStmtAssign,
+			TNT_STMT_STORE_STRING: compileStmtStoreString,
 			// TNT_STMT_STRING
 
 			// TNT_STMT_WHILE
