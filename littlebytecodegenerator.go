@@ -417,7 +417,9 @@ func compileStmtList(tn TreeNode) {
 	blockLevel--
 
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		if lisi, ok := callStackInfo[i].(LocalIntStorageInfo); ok && (lisi.BlockLevel > blockLevel) {
+		if lisi, ok :=
+			callStackInfo[i].(LocalIntStorageInfo); ok && (lisi.BlockLevel > blockLevel) {
+
 			emitPopOp(IntInfo{IsSigned: lisi.IsSigned, BytesCount: lisi.BytesCount})
 			callStackInfo = callStackInfo[:len(callStackInfo)-1]
 		} else {
@@ -431,6 +433,7 @@ func compileStmtDecl(tn TreeNode) {
 	stmtDeclTypeTreeNode := tn.Children[1]
 
 	if lisi, ok := callStackInfoFindLocalIntStorageInfo(string(stmtDeclIdentTreeNode.Tok.Buf)); ok {
+
 		if (lisi.BlockLevel == blockLevel) ||
 			((lisi.BlockLevel == STARTING_BLOCK_LEVEL) && (blockLevel == STARTING_BLOCK_LEVEL+1)) {
 			PrintErrorAndExit(stmtDeclIdentTreeNode.Tok.LineNumber)
