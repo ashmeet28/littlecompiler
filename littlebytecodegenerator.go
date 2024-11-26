@@ -433,7 +433,6 @@ func compileStmtDecl(tn TreeNode) {
 	stmtDeclTypeTreeNode := tn.Children[1]
 
 	if lisi, ok := callStackInfoFindLocalIntStorageInfo(string(stmtDeclIdentTreeNode.Tok.Buf)); ok {
-
 		if (lisi.BlockLevel == blockLevel) ||
 			((lisi.BlockLevel == STARTING_BLOCK_LEVEL) && (blockLevel == STARTING_BLOCK_LEVEL+1)) {
 			PrintErrorAndExit(stmtDeclIdentTreeNode.Tok.LineNumber)
