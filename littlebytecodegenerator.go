@@ -301,22 +301,16 @@ func emitReturn(i interface{}) bool {
 	case IntInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeIntInfo(v))
-		bytecode = append(bytecode,
-			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
 		return true
 	case LocalIntInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeLocalIntInfo(v))
-		bytecode = append(bytecode,
-			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
 		return true
 	case VoidInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeIntInfo(IntInfo{IsSigned: false, BytesCount: 0}))
-		bytecode = append(bytecode,
-			binary.LittleEndian.AppendUint64(make([]byte, 0), uint64((-framePointer)))...)
 
 		return true
 	default:
@@ -508,15 +502,20 @@ func compileStmtAssign(tn TreeNode) {
 
 	if ok := emitAssignOp(
 		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); !ok {
+
+		callStackInfo = callStackInfo[:len(callStackInfo)-2]
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
 }
 
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
+		emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(-framePointer))
+
 		if ii, ok := returnIntInfo.(IntInfo); ok {
 			emitPushOp(ii, 0)
 		}
+
 		if ok := emitReturn(returnIntInfo); !ok {
 			PrintErrorAndExit(0)
 		}
