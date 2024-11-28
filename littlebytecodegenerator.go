@@ -392,13 +392,9 @@ func emitAssignOp(v1 interface{}, v2 interface{}) bool {
 }
 
 func emitStoreStringOp(a interface{}, b []byte) bool {
-	var vb byte
-
 	switch v := a.(type) {
 	case IntAddressInfo:
-		if (v.RealSize == 8) && (!v.IsSigned) {
-			vb = encodeIntAddressInfo(v)
-		} else {
+		if v.RealSize != 8 || v.IsSigned {
 			return false
 		}
 	default:
@@ -406,7 +402,6 @@ func emitStoreStringOp(a interface{}, b []byte) bool {
 	}
 
 	bytecode = append(bytecode, OP_STORE_STRING)
-	bytecode = append(bytecode, vb)
 	bytecode = append(bytecode, b...)
 	bytecode = append(bytecode, 0)
 
@@ -585,6 +580,11 @@ func compileStmtStoreString(tn TreeNode) {
 }
 
 func compileStmtIf(tn TreeNode) {
+	// exprTreeNode := tn.Children[0]
+	// stmtListTreeNode := tn.Children[1]
+
+	// compileExpr(exprTreeNode)
+
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -720,12 +720,24 @@ func compileExprFunc(tn TreeNode) {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
 			}
+
+			blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
+
+			emitOp(OP_CALL)
+
+			callStackInfo = callStackInfo[:len(callStackInfo)-len(fsi.ParamListInt)]
+
+			switch v := fsi.ReturnInt.(type) {
+			case IntInfo:
+				callStackInfo = append(callStackInfo, v)
+			case VoidInfo:
+				callStackInfo = append(callStackInfo, v)
+			default:
+				PrintErrorAndExit(0)
+			}
 		} else {
 			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
-
-		blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
-		emitOp(OP_CALL)
 	}
 }
 
