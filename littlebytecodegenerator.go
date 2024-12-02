@@ -700,6 +700,8 @@ func compileExprFunc(tn TreeNode) {
 			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
 	} else {
+		funcParmListStartingAddress := callStackInfoGetTotalBytesCount() - framePointer
+
 		compileTreeNodeChildren(tn.Children)
 
 		if fsi, ok := funcListInfo[string(tn.Tok.Buf)]; ok {
@@ -720,6 +722,8 @@ func compileExprFunc(tn TreeNode) {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
 			}
+
+			emitPushOp(IntInfo{IsSigned: false, BytesCount: 8}, uint64(funcParmListStartingAddress))
 
 			blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
 
