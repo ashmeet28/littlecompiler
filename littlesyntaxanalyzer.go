@@ -362,7 +362,7 @@ func parseStmtWhile() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_WHILE
 
-	consumeTok(TT_WHILE)
+	tn.Tok = consumeTok(TT_WHILE)
 
 	tn.Children = append(tn.Children, parseExpr())
 

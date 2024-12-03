@@ -579,6 +579,38 @@ func compileStmtStoreString(tn TreeNode) {
 	}
 }
 
+func compileStmtWhile(tn TreeNode) {
+	stmtWhileStartingAddr := len(bytecode)
+
+	exprTreeNode := tn.Children[0]
+	stmtListTreeNode := tn.Children[1]
+
+	compileExpr(exprTreeNode)
+
+	if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
+		if (ii.BytesCount != 1) || (ii.IsSigned) {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	stmtWhileBlankPushOpAddr := emitBlankPushOp()
+
+	emitOp(OP_BRANCH)
+
+	compileStmtList(stmtListTreeNode)
+
+	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
+		uint64(stmtWhileStartingAddr)-(uint64(len(bytecode))+10))
+
+	emitOp(OP_JUMP)
+
+	backpatchBlankPushOp(stmtWhileBlankPushOpAddr,
+		uint64(len(bytecode))-(uint64(stmtWhileBlankPushOpAddr)+10))
+
+}
+
 func compileStmtIf(tn TreeNode) {
 	exprTreeNode := tn.Children[0]
 	stmtListTreeNode := tn.Children[1]
@@ -758,7 +790,8 @@ func compileExprFunc(tn TreeNode) {
 				}
 			}
 
-			emitPushOp(IntInfo{IsSigned: false, BytesCount: 8}, uint64(funcParmListStartingAddress))
+			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
+				uint64(funcParmListStartingAddress))
 
 			blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
 
@@ -864,9 +897,9 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			TNT_STMT_STORE_STRING: compileStmtStoreString,
 			// TNT_STMT_STRING
 
-			// TNT_STMT_WHILE
-			TNT_STMT_IF:   compileStmtIf,
-			TNT_STMT_ELSE: compileStmtElse,
+			TNT_STMT_WHILE: compileStmtWhile,
+			TNT_STMT_IF:    compileStmtIf,
+			TNT_STMT_ELSE:  compileStmtElse,
 
 			TNT_STMT_RETURN: compileStmtReturn,
 			// TNT_STMT_BREAK
