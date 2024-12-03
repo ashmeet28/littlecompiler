@@ -380,7 +380,7 @@ func parseStmtIf() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_IF
 
-	consumeTok(TT_IF)
+	tn.Tok = consumeTok(TT_IF)
 
 	tn.Children = append(tn.Children, parseExpr())
 

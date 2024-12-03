@@ -580,11 +580,27 @@ func compileStmtStoreString(tn TreeNode) {
 }
 
 func compileStmtIf(tn TreeNode) {
-	// exprTreeNode := tn.Children[0]
-	// stmtListTreeNode := tn.Children[1]
+	exprTreeNode := tn.Children[0]
+	stmtListTreeNode := tn.Children[1]
 
-	// compileExpr(exprTreeNode)
+	compileExpr(exprTreeNode)
 
+	if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
+		if (ii.BytesCount != 1) || (ii.IsSigned) {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	stmtIfBlankPushOpAddr := emitBlankPushOp()
+
+	emitOp(OP_BRANCH)
+
+	compileStmtList(stmtListTreeNode)
+
+	backpatchBlankPushOp(stmtIfBlankPushOpAddr,
+		uint64(len(bytecode))-(uint64(stmtIfBlankPushOpAddr)+10))
 }
 
 func compileStmtReturn(tn TreeNode) {
