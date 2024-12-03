@@ -599,8 +599,27 @@ func compileStmtIf(tn TreeNode) {
 
 	compileStmtList(stmtListTreeNode)
 
-	backpatchBlankPushOp(stmtIfBlankPushOpAddr,
-		uint64(len(bytecode))-(uint64(stmtIfBlankPushOpAddr)+10))
+	if len(tn.Children) == 3 {
+		stmtIfStmtListEndBlankPushOpAddr := emitBlankPushOp()
+
+		emitOp(OP_JUMP)
+
+		backpatchBlankPushOp(stmtIfBlankPushOpAddr,
+			uint64(len(bytecode))-(uint64(stmtIfBlankPushOpAddr)+10))
+
+		stmtElseTreeNode := tn.Children[2]
+		compileStmtElse(stmtElseTreeNode)
+
+		backpatchBlankPushOp(stmtIfStmtListEndBlankPushOpAddr,
+			uint64(len(bytecode))-(uint64(stmtIfStmtListEndBlankPushOpAddr)+10))
+	} else {
+		backpatchBlankPushOp(stmtIfBlankPushOpAddr,
+			uint64(len(bytecode))-(uint64(stmtIfBlankPushOpAddr)+10))
+	}
+}
+
+func compileStmtElse(tn TreeNode) {
+	compileTreeNodeChildren(tn.Children)
 }
 
 func compileStmtReturn(tn TreeNode) {
@@ -846,8 +865,8 @@ func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
 			// TNT_STMT_STRING
 
 			// TNT_STMT_WHILE
-			TNT_STMT_IF: compileStmtIf,
-			// TNT_STMT_ELSE
+			TNT_STMT_IF:   compileStmtIf,
+			TNT_STMT_ELSE: compileStmtElse,
 
 			TNT_STMT_RETURN: compileStmtReturn,
 			// TNT_STMT_BREAK
