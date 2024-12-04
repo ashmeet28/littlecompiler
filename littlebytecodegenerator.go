@@ -301,8 +301,8 @@ func emitPopOp(ii IntInfo) {
 	bytecode = append(bytecode, encodeIntInfo(ii))
 }
 
-func emitReturn(i interface{}) bool {
-	switch v := i.(type) {
+func emitReturn() bool {
+	switch v := returnIntInfo.(type) {
 	case IntInfo:
 		bytecode = append(bytecode, OP_RETURN)
 		bytecode = append(bytecode, encodeIntInfo(v))
@@ -656,14 +656,35 @@ func compileStmtElse(tn TreeNode) {
 
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
-		emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(-framePointer))
-
 		if ii, ok := returnIntInfo.(IntInfo); ok {
 			emitPushOp(ii, 0)
 		}
 
-		if ok := emitReturn(returnIntInfo); !ok {
+		emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(-framePointer))
+
+		if ok := emitReturn(); !ok {
 			PrintErrorAndExit(0)
+		}
+	} else {
+		compileTreeNodeChildren(tn.Children)
+
+		if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
+			if rii, ok := returnIntInfo.(IntInfo); ok &&
+				rii.BytesCount == ii.BytesCount && rii.IsSigned == ii.IsSigned {
+
+				callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+				emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
+					uint64(-framePointer))
+
+				if ok := emitReturn(); !ok {
+					PrintErrorAndExit(0)
+				}
+			} else {
+				PrintErrorAndExit(tn.Tok.LineNumber)
+			}
+		} else {
+			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
 	}
 }

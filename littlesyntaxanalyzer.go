@@ -527,7 +527,8 @@ func parseExprBinary(exprTreeNode TreeNode) TreeNode {
 func parseStmtReturn() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_RETURN
-	consumeTok(TT_RETURN)
+
+	tn.Tok = consumeTok(TT_RETURN)
 
 	if matchTok(TT_IDENT, TT_LPAREN) {
 		tn.Children = append(tn.Children, parseExpr())
