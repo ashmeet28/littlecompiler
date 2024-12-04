@@ -668,9 +668,9 @@ func compileStmtReturn(tn TreeNode) {
 	} else {
 		compileTreeNodeChildren(tn.Children)
 
-		if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
-			if rii, ok := returnIntInfo.(IntInfo); ok &&
-				rii.BytesCount == ii.BytesCount && rii.IsSigned == ii.IsSigned {
+		if exprII, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
+			if returnII, ok := returnIntInfo.(IntInfo); ok &&
+				returnII.BytesCount == exprII.BytesCount && returnII.IsSigned == exprII.IsSigned {
 
 				callStackInfo = callStackInfo[:len(callStackInfo)-1]
 
