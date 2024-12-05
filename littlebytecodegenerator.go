@@ -566,7 +566,7 @@ func compileStmtStoreString(tn TreeNode) {
 	exprTreeNode := tn.Children[0]
 	stmtStringTreeNode := tn.Children[1]
 
-	compileExpr(exprTreeNode)
+	compileTreeNode(exprTreeNode)
 
 	if ok, b := unescapeStmtString(stmtStringTreeNode.Tok.Buf); ok {
 		if ok := emitStoreStringOp(callStackInfo[len(callStackInfo)-1], b); ok {
@@ -585,7 +585,7 @@ func compileStmtWhile(tn TreeNode) {
 	exprTreeNode := tn.Children[0]
 	stmtListTreeNode := tn.Children[1]
 
-	compileExpr(exprTreeNode)
+	compileTreeNode(exprTreeNode)
 
 	if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
 		if (ii.BytesCount != 1) || (ii.IsSigned) {
@@ -599,7 +599,7 @@ func compileStmtWhile(tn TreeNode) {
 
 	emitOp(OP_BRANCH)
 
-	compileStmtList(stmtListTreeNode)
+	compileTreeNode(stmtListTreeNode)
 
 	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
 		uint64(stmtWhileStartingAddr)-(uint64(len(bytecode))+10))
@@ -615,7 +615,7 @@ func compileStmtIf(tn TreeNode) {
 	exprTreeNode := tn.Children[0]
 	stmtListTreeNode := tn.Children[1]
 
-	compileExpr(exprTreeNode)
+	compileTreeNode(exprTreeNode)
 
 	if ii, ok := callStackInfo[len(callStackInfo)-1].(IntInfo); ok {
 		if (ii.BytesCount != 1) || (ii.IsSigned) {
@@ -629,7 +629,7 @@ func compileStmtIf(tn TreeNode) {
 
 	emitOp(OP_BRANCH)
 
-	compileStmtList(stmtListTreeNode)
+	compileTreeNode(stmtListTreeNode)
 
 	if len(tn.Children) == 3 {
 		stmtIfStmtListEndBlankPushOpAddr := emitBlankPushOp()
@@ -640,7 +640,7 @@ func compileStmtIf(tn TreeNode) {
 			uint64(len(bytecode))-(uint64(stmtIfBlankPushOpAddr)+10))
 
 		stmtElseTreeNode := tn.Children[2]
-		compileStmtElse(stmtElseTreeNode)
+		compileTreeNode(stmtElseTreeNode)
 
 		backpatchBlankPushOp(stmtIfStmtListEndBlankPushOpAddr,
 			uint64(len(bytecode))-(uint64(stmtIfStmtListEndBlankPushOpAddr)+10))
@@ -891,51 +891,55 @@ func compileExprBinary(tn TreeNode) {
 	}
 }
 
+func compileTreeNode(tn TreeNode) {
+	map[TreeNodeType]func(TreeNode){
+		// TNT_ROOT
+
+		TNT_FUNC_LIST: compileFuncList,
+		TNT_FUNC:      compileFunc,
+
+		TNT_FUNC_IDENT:      compileFuncIdent,
+		TNT_FUNC_SIG:        compileFuncSig,
+		TNT_FUNC_PARAM_LIST: compileFuncParamList,
+		TNT_FUNC_PARAM:      compileFuncParam,
+		// TNT_FUNC_PARAM_IDENT
+		// TNT_FUNC_PARAM_TYPE
+		TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
+
+		TNT_STMT_LIST: compileStmtList,
+
+		TNT_STMT_DECL: compileStmtDecl,
+		// TNT_STMT_DECL_IDENT
+		// TNT_STMT_DECL_TYPE
+
+		TNT_STMT_EXPR:         compileStmtExpr,
+		TNT_STMT_ASSIGN:       compileStmtAssign,
+		TNT_STMT_STORE_STRING: compileStmtStoreString,
+		// TNT_STMT_STRING
+
+		TNT_STMT_WHILE: compileStmtWhile,
+		TNT_STMT_IF:    compileStmtIf,
+		TNT_STMT_ELSE:  compileStmtElse,
+
+		TNT_STMT_RETURN: compileStmtReturn,
+		// TNT_STMT_BREAK
+		// TNT_STMT_CONTINUE
+
+		TNT_EXPR:                compileExpr,
+		TNT_EXPR_INT:            compileExprInt,
+		TNT_EXPR_FUNC:           compileExprFunc,
+		TNT_EXPR_FUNC_PARM_LIST: compileExprFuncParmList,
+		TNT_EXPR_FUNC_PARM:      compileExprFuncParm,
+		// TNT_EXPR_INT_LIT
+		// TNT_EXPR_NEG_INT_LIT
+		// TNT_EXPR_CHAR
+		TNT_EXPR_BINARY: compileExprBinary,
+	}[tn.Kype](tn)
+}
+
 func compileTreeNodeChildren(treeNodeChildren []TreeNode) {
-	for _, c := range treeNodeChildren {
-		map[TreeNodeType]func(TreeNode){
-			// TNT_ROOT
-
-			TNT_FUNC_LIST: compileFuncList,
-			TNT_FUNC:      compileFunc,
-
-			TNT_FUNC_IDENT:      compileFuncIdent,
-			TNT_FUNC_SIG:        compileFuncSig,
-			TNT_FUNC_PARAM_LIST: compileFuncParamList,
-			TNT_FUNC_PARAM:      compileFuncParam,
-			// TNT_FUNC_PARAM_IDENT
-			// TNT_FUNC_PARAM_TYPE
-			TNT_FUNC_RETURN_TYPE: compileFuncReturnType,
-
-			TNT_STMT_LIST: compileStmtList,
-
-			TNT_STMT_DECL: compileStmtDecl,
-			// TNT_STMT_DECL_IDENT
-			// TNT_STMT_DECL_TYPE
-
-			TNT_STMT_EXPR:         compileStmtExpr,
-			TNT_STMT_ASSIGN:       compileStmtAssign,
-			TNT_STMT_STORE_STRING: compileStmtStoreString,
-			// TNT_STMT_STRING
-
-			TNT_STMT_WHILE: compileStmtWhile,
-			TNT_STMT_IF:    compileStmtIf,
-			TNT_STMT_ELSE:  compileStmtElse,
-
-			TNT_STMT_RETURN: compileStmtReturn,
-			// TNT_STMT_BREAK
-			// TNT_STMT_CONTINUE
-
-			TNT_EXPR:                compileExpr,
-			TNT_EXPR_INT:            compileExprInt,
-			TNT_EXPR_FUNC:           compileExprFunc,
-			TNT_EXPR_FUNC_PARM_LIST: compileExprFuncParmList,
-			TNT_EXPR_FUNC_PARM:      compileExprFuncParm,
-			// TNT_EXPR_INT_LIT
-			// TNT_EXPR_NEG_INT_LIT
-			// TNT_EXPR_CHAR
-			TNT_EXPR_BINARY: compileExprBinary,
-		}[c.Kype](c)
+	for _, tn := range treeNodeChildren {
+		compileTreeNode(tn)
 	}
 }
 
