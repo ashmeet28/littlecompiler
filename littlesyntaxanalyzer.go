@@ -542,7 +542,7 @@ func parseStmtReturn() TreeNode {
 func parseStmtBreak() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_BREAK
-	consumeTok(TT_BREAK)
+	tn.Tok = consumeTok(TT_BREAK)
 	consumeTok(TT_NEW_LINE)
 	return tn
 }
@@ -550,7 +550,7 @@ func parseStmtBreak() TreeNode {
 func parseStmtContinue() TreeNode {
 	var tn TreeNode
 	tn.Kype = TNT_STMT_CONTINUE
-	consumeTok(TT_CONTINUE)
+	tn.Tok = consumeTok(TT_CONTINUE)
 	consumeTok(TT_NEW_LINE)
 	return tn
 }

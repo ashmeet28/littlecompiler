@@ -258,6 +258,9 @@ var funcAddrList map[string]int
 
 var blankFuncAddrList map[string]int
 
+var blankContinueStmtAddrList [][]int
+var blankBreakStmtAddrList [][]int
+
 func encodeIntInfo(ii IntInfo) byte {
 	var b byte = byte(ii.BytesCount)
 
@@ -599,6 +602,9 @@ func compileStmtWhile(tn TreeNode) {
 
 	emitOp(OP_BRANCH)
 
+	blankBreakStmtAddrList = append(blankBreakStmtAddrList, make([]int, 0))
+	blankContinueStmtAddrList = append(blankContinueStmtAddrList, make([]int, 0))
+
 	compileTreeNode(stmtListTreeNode)
 
 	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
@@ -609,6 +615,21 @@ func compileStmtWhile(tn TreeNode) {
 	backpatchBlankPushOp(stmtWhileBlankPushOpAddr,
 		uint64(len(bytecode))-(uint64(stmtWhileBlankPushOpAddr)+10))
 
+	for _, blankBreakStmtAddr := range blankBreakStmtAddrList[len(blankBreakStmtAddrList)-1] {
+		backpatchBlankPushOp(blankBreakStmtAddr,
+			uint64(len(bytecode))-(uint64(blankBreakStmtAddr)+10))
+	}
+
+	blankBreakStmtAddrList = blankBreakStmtAddrList[:len(blankBreakStmtAddrList)-1]
+
+	for _, blankContinueStmtAddr := range blankContinueStmtAddrList[len(
+		blankContinueStmtAddrList)-1] {
+
+		backpatchBlankPushOp(blankContinueStmtAddr,
+			uint64(stmtWhileStartingAddr)-(uint64(blankContinueStmtAddr)+10))
+	}
+
+	blankContinueStmtAddrList = blankContinueStmtAddrList[:len(blankContinueStmtAddrList)-1]
 }
 
 func compileStmtIf(tn TreeNode) {
@@ -689,6 +710,27 @@ func compileStmtReturn(tn TreeNode) {
 	}
 }
 
+func compileStmtBreak(tn TreeNode) {
+	if len(blankBreakStmtAddrList) != 0 {
+		blankBreakStmtAddrList[len(blankBreakStmtAddrList)-1] = append(
+			blankBreakStmtAddrList[len(blankBreakStmtAddrList)-1], emitBlankPushOp())
+
+		emitOp(OP_JUMP)
+	} else {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+}
+
+func compileStmtContinue(tn TreeNode) {
+	if len(blankBreakStmtAddrList) != 0 {
+		blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1] = append(
+			blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1], emitBlankPushOp())
+
+		emitOp(OP_JUMP)
+	} else {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+}
 func compileExpr(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 }
@@ -921,9 +963,9 @@ func compileTreeNode(tn TreeNode) {
 		TNT_STMT_IF:    compileStmtIf,
 		TNT_STMT_ELSE:  compileStmtElse,
 
-		TNT_STMT_RETURN: compileStmtReturn,
-		// TNT_STMT_BREAK
-		// TNT_STMT_CONTINUE
+		TNT_STMT_RETURN:   compileStmtReturn,
+		TNT_STMT_BREAK:    compileStmtBreak,
+		TNT_STMT_CONTINUE: compileStmtContinue,
 
 		TNT_EXPR:                compileExpr,
 		TNT_EXPR_INT:            compileExprInt,
