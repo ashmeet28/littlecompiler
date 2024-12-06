@@ -626,8 +626,6 @@ func compileStmtWhile(tn TreeNode) {
 
 	stmtWhileBlankPushOpAddr := emitBlankPushOp()
 
-	emitOp(OP_BRANCH)
-
 	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
