@@ -394,6 +394,31 @@ func emitAssignOp(v1 interface{}, v2 interface{}) bool {
 	return false
 }
 
+func emitBranchOp(i interface{}) bool {
+	switch v := i.(type) {
+	case IntInfo:
+		if (v.BytesCount != 1) || (v.IsSigned) {
+			return false
+		}
+
+		bytecode = append(bytecode, OP_BRANCH)
+		bytecode = append(bytecode, encodeIntInfo(v))
+
+		return true
+	case IntAddressInfo:
+		if (v.RealSize != 1) || (v.IsSigned) {
+			return false
+		}
+
+		bytecode = append(bytecode, OP_BRANCH)
+		bytecode = append(bytecode, encodeIntAddressInfo(v))
+
+		return true
+	default:
+		return false
+	}
+}
+
 func emitStoreStringOp(a interface{}, b []byte) bool {
 	switch v := a.(type) {
 	case IntAddressInfo:
@@ -590,11 +615,24 @@ func compileStmtWhile(tn TreeNode) {
 
 	compileTreeNode(exprTreeNode)
 
-	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+	switch callStackInfo[len(callStackInfo)-1].(type) {
+	case IntInfo:
+	case IntAddressInfo:
+	case VoidInfo:
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	default:
+		PrintErrorAndExit(0)
+	}
 
 	stmtWhileBlankPushOpAddr := emitBlankPushOp()
 
 	emitOp(OP_BRANCH)
+
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
 
 	blankBreakStmtAddrList = append(blankBreakStmtAddrList, make([]int, 0))
 	blankContinueStmtAddrList = append(blankContinueStmtAddrList, make([]int, 0))
@@ -632,11 +670,22 @@ func compileStmtIf(tn TreeNode) {
 
 	compileTreeNode(exprTreeNode)
 
-	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+	switch callStackInfo[len(callStackInfo)-1].(type) {
+	case IntInfo:
+	case IntAddressInfo:
+	case VoidInfo:
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	default:
+		PrintErrorAndExit(0)
+	}
 
 	stmtIfBlankPushOpAddr := emitBlankPushOp()
 
-	emitOp(OP_BRANCH)
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
 
 	compileTreeNode(stmtListTreeNode)
 
@@ -937,7 +986,6 @@ func compileExprBinary(tn TreeNode) {
 	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
-	// }
 }
 
 func compileTreeNode(tn TreeNode) {
