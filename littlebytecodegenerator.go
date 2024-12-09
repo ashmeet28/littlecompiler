@@ -20,19 +20,26 @@ var (
 	OP_POP    byte = 0x0d
 	OP_ASSIGN byte = 0x0e
 
-	OP_ADD byte = 0x10
-	OP_SUB byte = 0x11
+	OP_ADD byte = 0x40
+	OP_SUB byte = 0x41
 
-	OP_AND byte = 0x14
-	OP_OR  byte = 0x15
-	OP_XOR byte = 0x16
+	OP_AND byte = 0x44
+	OP_OR  byte = 0x45
+	OP_XOR byte = 0x46
 
-	OP_SL byte = 0x18
-	OP_SR byte = 0x19
+	OP_SHL byte = 0x48
+	OP_SHR byte = 0x49
 
-	OP_MUL byte = 0x1c
-	OP_DIV byte = 0x1d
-	OP_REM byte = 0x1e
+	OP_MUL byte = 0x4c
+	OP_QUO byte = 0x4d
+	OP_REM byte = 0x4e
+
+	OP_EQL byte = 0x50
+	OP_NEQ byte = 0x51
+	OP_LSS byte = 0x52
+	OP_GTR byte = 0x53
+	OP_LEQ byte = 0x54
+	OP_GEQ byte = 0x55
 
 	OP_LOAD  byte = 0x20
 	OP_STORE byte = 0x21
@@ -115,33 +122,30 @@ func callStackInfoReset() {
 	callStackInfo = make([]interface{}, 0)
 }
 
-func callStackInfoGetBytesCount(i interface{}) (int, bool) {
+func callStackInfoGetBytesCount(i interface{}) int {
 	switch v := i.(type) {
 	case IntInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	case IntStorageInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	case IntAddressInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	case PreviousFrameAddressInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	case ReturnAddressInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	case VoidInfo:
-		return v.BytesCount, true
+		return v.BytesCount
 	default:
-		return 0, false
+		PrintErrorAndExit(0)
+		return 0
 	}
 }
 
 func callStackInfoGetTotalBytesCount() int {
 	var totalBytesCount int
 	for _, i := range callStackInfo {
-		if currBytesCount, ok := callStackInfoGetBytesCount(i); ok {
-			totalBytesCount += currBytesCount
-		} else {
-			PrintErrorAndExit(0)
-		}
+		totalBytesCount += callStackInfoGetBytesCount(i)
 	}
 
 	return totalBytesCount
@@ -173,11 +177,7 @@ func callStackInfoGetIntAddress(intStorageInfoIdent string) (uint64, bool) {
 
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
 		if hasFound {
-			if currBytesCount, ok := callStackInfoGetBytesCount(callStackInfo[i]); ok {
-				totalBytesCount += currBytesCount
-			} else {
-				PrintErrorAndExit(0)
-			}
+			totalBytesCount += callStackInfoGetBytesCount(callStackInfo[i])
 		} else {
 			isi, ok := callStackInfo[i].(IntStorageInfo)
 			if ok && (isi.Ident == intStorageInfoIdent) {
@@ -352,7 +352,15 @@ func emitBinaryOp(op byte, v1 interface{}, v2 interface{}) (bool, IntInfo) {
 		return false, IntInfo{}
 	}
 
-	if ((vb1 & 0b11111) == (vb2 & 0b11111)) || (op == OP_SL) || (op == OP_SR) {
+	if _, ok := map[byte]bool{
+		OP_EQL: true, OP_NEQ: true,
+		OP_LSS: true, OP_GTR: true,
+		OP_LEQ: true, OP_GEQ: true}[op]; ok {
+
+		ii = IntInfo{IsSigned: false, BytesCount: 1}
+	}
+
+	if ((vb1 & 0b11111) == (vb2 & 0b11111)) || (op == OP_SHL) || (op == OP_SHR) {
 		bytecode = append(bytecode, op)
 		bytecode = append(bytecode, vb1)
 		bytecode = append(bytecode, vb2)
@@ -397,19 +405,11 @@ func emitAssignOp(v1 interface{}, v2 interface{}) bool {
 func emitBranchOp(i interface{}) bool {
 	switch v := i.(type) {
 	case IntInfo:
-		if (v.BytesCount != 1) || (v.IsSigned) {
-			return false
-		}
-
 		bytecode = append(bytecode, OP_BRANCH)
 		bytecode = append(bytecode, encodeIntInfo(v))
 
 		return true
 	case IntAddressInfo:
-		if (v.RealSize != 1) || (v.IsSigned) {
-			return false
-		}
-
 		bytecode = append(bytecode, OP_BRANCH)
 		bytecode = append(bytecode, encodeIntAddressInfo(v))
 
@@ -422,7 +422,7 @@ func emitBranchOp(i interface{}) bool {
 func emitStoreStringOp(a interface{}, b []byte) bool {
 	switch v := a.(type) {
 	case IntAddressInfo:
-		if v.RealSize != 8 || v.IsSigned {
+		if (v.RealSize != 8) || (v.IsSigned) {
 			return false
 		}
 	default:
@@ -539,9 +539,6 @@ func compileStmtExpr(tn TreeNode) {
 		emitPopOp(v)
 	case IntAddressInfo:
 		emitPopOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT})
-	case VoidInfo:
-	default:
-		PrintErrorAndExit(0)
 	}
 
 	callStackInfo = callStackInfo[:len(callStackInfo)-1]
@@ -551,9 +548,10 @@ func compileStmtAssign(tn TreeNode) {
 	compileTreeNodeChildren(tn.Children)
 
 	if ok := emitAssignOp(
-		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); !ok {
+		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); ok {
 
 		callStackInfo = callStackInfo[:len(callStackInfo)-2]
+	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
 }
@@ -561,7 +559,7 @@ func compileStmtAssign(tn TreeNode) {
 func unescapeStmtString(b []byte) (bool, []byte) {
 	var nb []byte
 
-	if len(b) < 3 || (b[0] != 0x22) || (b[len(b)-1] != 0x22) {
+	if (len(b) < 3) || (b[0] != 0x22) || (b[len(b)-1] != 0x22) {
 		return false, nb
 	}
 
@@ -615,15 +613,6 @@ func compileStmtWhile(tn TreeNode) {
 
 	compileTreeNode(exprTreeNode)
 
-	switch callStackInfo[len(callStackInfo)-1].(type) {
-	case IntInfo:
-	case IntAddressInfo:
-	case VoidInfo:
-		PrintErrorAndExit(tn.Tok.LineNumber)
-	default:
-		PrintErrorAndExit(0)
-	}
-
 	stmtWhileBlankPushOpAddr := emitBlankPushOp()
 
 	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
@@ -667,15 +656,6 @@ func compileStmtIf(tn TreeNode) {
 	stmtListTreeNode := tn.Children[1]
 
 	compileTreeNode(exprTreeNode)
-
-	switch callStackInfo[len(callStackInfo)-1].(type) {
-	case IntInfo:
-	case IntAddressInfo:
-	case VoidInfo:
-		PrintErrorAndExit(tn.Tok.LineNumber)
-	default:
-		PrintErrorAndExit(0)
-	}
 
 	stmtIfBlankPushOpAddr := emitBlankPushOp()
 
@@ -743,10 +723,8 @@ func compileStmtReturn(tn TreeNode) {
 				if (v.RealSize != returnII.BytesCount) || (v.IsSigned != returnII.IsSigned) {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
-			case VoidInfo:
-				PrintErrorAndExit(tn.Tok.LineNumber)
 			default:
-				PrintErrorAndExit(0)
+				PrintErrorAndExit(tn.Tok.LineNumber)
 			}
 
 			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
@@ -775,7 +753,7 @@ func compileStmtBreak(tn TreeNode) {
 }
 
 func compileStmtContinue(tn TreeNode) {
-	if len(blankBreakStmtAddrList) != 0 {
+	if len(blankContinueStmtAddrList) != 0 {
 		blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1] = append(
 			blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1], emitBlankPushOp())
 
@@ -795,8 +773,8 @@ func compileExprInt(tn TreeNode) {
 		iai.IsSigned = isi.IsSigned
 		iai.BytesCount = ADDR_BYTES_COUNT
 
-		if addr, ok := callStackInfoGetIntAddress(string(tn.Tok.Buf)); ok {
-			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, addr)
+		if a, ok := callStackInfoGetIntAddress(string(tn.Tok.Buf)); ok {
+			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, a)
 			callStackInfo = append(callStackInfo, iai)
 		} else {
 			PrintErrorAndExit(0)
@@ -807,12 +785,12 @@ func compileExprInt(tn TreeNode) {
 }
 
 func unescapeExprChar(b []byte) (byte, bool) {
-	if len(b) < 3 || (b[0] != 0x27) || (b[len(b)-1] != 0x27) {
+	if (len(b) < 3) || (b[0] != 0x27) || (b[len(b)-1] != 0x27) {
 		return 0, false
 	}
 
 	if b[1] == 0x5c {
-		if len(b) == 4 && (b[2] == 0x5c || b[2] == 0x27) {
+		if (len(b) == 4) && (b[2] == 0x5c || b[2] == 0x27) {
 			return b[2], true
 		} else {
 			return 0, false
@@ -953,36 +931,56 @@ func compileExprFuncParm(tn TreeNode) {
 	}
 }
 
+func compileExprBinaryLAND(tn TreeNode) {
+}
+
+func compileExprBinaryLOR(tn TreeNode) {
+
+}
+
 func compileExprBinary(tn TreeNode) {
-	compileTreeNodeChildren(tn.Children)
-
-	op, ok := map[TokenType]byte{
-		TT_ADD: OP_ADD,
-		TT_SUB: OP_SUB,
-
-		TT_AND: OP_AND,
-		TT_OR:  OP_OR,
-		TT_XOR: OP_XOR,
-
-		TT_SHL: OP_SL,
-		TT_SHR: OP_SR,
-
-		TT_MUL: OP_MUL,
-		TT_QUO: OP_DIV,
-		TT_REM: OP_REM,
-	}[tn.Tok.Kype]
-
-	if !ok {
-		PrintErrorAndExit(0)
-	}
-
-	if ok, ii := emitBinaryOp(op,
-		callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); ok {
-
-		callStackInfo = callStackInfo[:len(callStackInfo)-2]
-		callStackInfo = append(callStackInfo, ii)
+	if tn.Tok.Kype == TT_LAND {
+		compileExprBinaryLAND(tn)
+	} else if tn.Tok.Kype == TT_LOR {
+		compileExprBinaryLOR(tn)
 	} else {
-		PrintErrorAndExit(tn.Tok.LineNumber)
+		compileTreeNodeChildren(tn.Children)
+
+		op, ok := map[TokenType]byte{
+			TT_ADD: OP_ADD,
+			TT_SUB: OP_SUB,
+
+			TT_AND: OP_AND,
+			TT_OR:  OP_OR,
+			TT_XOR: OP_XOR,
+
+			TT_SHL: OP_SHL,
+			TT_SHR: OP_SHR,
+
+			TT_MUL: OP_MUL,
+			TT_QUO: OP_QUO,
+			TT_REM: OP_REM,
+
+			TT_EQL: OP_EQL,
+			TT_NEQ: OP_NEQ,
+			TT_LSS: OP_LSS,
+			TT_GTR: OP_GTR,
+			TT_LEQ: OP_LEQ,
+			TT_GEQ: OP_GEQ,
+		}[tn.Tok.Kype]
+
+		if !ok {
+			PrintErrorAndExit(0)
+		}
+
+		if ok, ii := emitBinaryOp(op,
+			callStackInfo[len(callStackInfo)-2], callStackInfo[len(callStackInfo)-1]); ok {
+
+			callStackInfo = callStackInfo[:len(callStackInfo)-2]
+			callStackInfo = append(callStackInfo, ii)
+		} else {
+			PrintErrorAndExit(tn.Tok.LineNumber)
+		}
 	}
 }
 
