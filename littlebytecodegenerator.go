@@ -932,18 +932,108 @@ func compileExprFuncParm(tn TreeNode) {
 }
 
 func compileExprBinaryLAND(tn TreeNode) {
+	leftTreeNode := tn.Children[0]
+	rightTreeNode := tn.Children[1]
+
+	compileTreeNode(leftTreeNode)
+
+	blankPushOpAAddr := emitBlankPushOp()
+
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	compileTreeNode(rightTreeNode)
+
+	blankPushOpBAddr := emitBlankPushOp()
+
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	ii := IntInfo{IsSigned: false, BytesCount: 1}
+
+	emitPushOp(ii, 1)
+
+	blankPushOpCAddr := emitBlankPushOp()
+
+	emitOp(OP_JUMP)
+
+	backpatchBlankPushOp(blankPushOpAAddr, uint64(len(bytecode))-(uint64(blankPushOpAAddr)+10))
+	backpatchBlankPushOp(blankPushOpBAddr, uint64(len(bytecode))-(uint64(blankPushOpBAddr)+10))
+
+	emitPushOp(ii, 0)
+
+	backpatchBlankPushOp(blankPushOpCAddr, uint64(len(bytecode))-(uint64(blankPushOpCAddr)+10))
+
+	callStackInfo = append(callStackInfo, ii)
 }
 
 func compileExprBinaryLOR(tn TreeNode) {
+	leftTreeNode := tn.Children[0]
+	rightTreeNode := tn.Children[1]
 
+	compileTreeNode(leftTreeNode)
+
+	blankPushOpAAddr := emitBlankPushOp()
+
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	ii := IntInfo{IsSigned: false, BytesCount: 1}
+
+	onePushOpStartingAddr := len(bytecode)
+
+	emitPushOp(ii, 1)
+
+	blankPushOpBAddr := emitBlankPushOp()
+
+	emitOp(OP_JUMP)
+
+	backpatchBlankPushOp(blankPushOpAAddr, uint64(len(bytecode))-(uint64(blankPushOpAAddr)+10))
+
+	compileTreeNode(rightTreeNode)
+
+	blankPushOpCAddr := emitBlankPushOp()
+
+	if ok := emitBranchOp(callStackInfo[len(callStackInfo)-1]); !ok {
+		PrintErrorAndExit(tn.Tok.LineNumber)
+	}
+
+	callStackInfo = callStackInfo[:len(callStackInfo)-1]
+
+	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
+		uint64(onePushOpStartingAddr)-(uint64(len(bytecode))+10))
+
+	emitOp(OP_JUMP)
+
+	backpatchBlankPushOp(blankPushOpCAddr, uint64(len(bytecode))-(uint64(blankPushOpCAddr)+10))
+
+	emitPushOp(ii, 0)
+
+	backpatchBlankPushOp(blankPushOpBAddr, uint64(len(bytecode))-(uint64(blankPushOpBAddr)+10))
+
+	callStackInfo = append(callStackInfo, ii)
 }
 
 func compileExprBinary(tn TreeNode) {
 	if tn.Tok.Kype == TT_LAND {
+
 		compileExprBinaryLAND(tn)
+
 	} else if tn.Tok.Kype == TT_LOR {
+
 		compileExprBinaryLOR(tn)
+
 	} else {
+
 		compileTreeNodeChildren(tn.Children)
 
 		op, ok := map[TokenType]byte{
@@ -981,6 +1071,7 @@ func compileExprBinary(tn TreeNode) {
 		} else {
 			PrintErrorAndExit(tn.Tok.LineNumber)
 		}
+
 	}
 }
 
