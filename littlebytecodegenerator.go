@@ -82,25 +82,17 @@ type VoidInfo struct {
 }
 
 func getIntInfoFromTypeString(s string) (IntInfo, bool) {
-	if _, ok := map[string]bool{"i8": true, "i16": true, "i32": true, "i64": true,
-		"u8": true, "u16": true, "u32": true, "u64": true}[s]; !ok {
+	if ii, ok := map[string]IntInfo{
+		"i8":  {IsSigned: true, BytesCount: 1},
+		"i16": {IsSigned: true, BytesCount: 2},
+		"i32": {IsSigned: true, BytesCount: 4},
+		"i64": {IsSigned: true, BytesCount: 8},
 
-		return IntInfo{}, false
-
-	}
-
-	var ii IntInfo
-
-	if s[0] == 0x75 {
-		ii.IsSigned = false
-	} else if s[0] == 0x69 {
-		ii.IsSigned = true
-	} else {
-		return IntInfo{}, false
-	}
-
-	if bitSize, err := strconv.ParseUint(s[1:], 10, 64); err == nil {
-		ii.BytesCount = int(bitSize) / 8
+		"u8":  {IsSigned: false, BytesCount: 1},
+		"u16": {IsSigned: false, BytesCount: 2},
+		"u32": {IsSigned: false, BytesCount: 4},
+		"u64": {IsSigned: false, BytesCount: 8},
+	}[s]; ok {
 		return ii, true
 	} else {
 		return IntInfo{}, false
@@ -110,7 +102,7 @@ func getIntInfoFromTypeString(s string) (IntInfo, bool) {
 var ADDR_BYTES_COUNT int = 8
 
 var blockLevel int
-var returnIntInfo interface{}
+var returnValueInfo interface{}
 var framePointer int
 
 var callStackInfo []interface{}
@@ -119,7 +111,7 @@ var STARTING_BLOCK_LEVEL int = 1
 
 func callStackInfoReset() {
 	blockLevel = STARTING_BLOCK_LEVEL
-	returnIntInfo = VoidInfo{BytesCount: 0}
+	returnValueInfo = VoidInfo{BytesCount: 0}
 	framePointer = 0
 	callStackInfo = make([]interface{}, 0)
 }
@@ -159,12 +151,9 @@ func callStackInfoInitFrame() {
 	framePointer = callStackInfoGetTotalBytesCount()
 }
 
-func callStackInfoFindIntStorageInfo(
-	intStorageInfoIdent string) (IntStorageInfo, bool) {
-
+func callStackInfoFindIntStorageInfo(intStorageInfoIdent string) (IntStorageInfo, bool) {
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		isi, ok := callStackInfo[i].(IntStorageInfo)
-		if ok && (isi.Ident == intStorageInfoIdent) {
+		if isi, ok := callStackInfo[i].(IntStorageInfo); ok && (isi.Ident == intStorageInfoIdent) {
 			return isi, true
 		}
 	}
@@ -180,24 +169,22 @@ func callStackInfoGetIntAddress(intStorageInfoIdent string) (uint64, bool) {
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
 		if hasFound {
 			totalBytesCount += callStackInfoGetBytesCount(callStackInfo[i])
-		} else {
-			isi, ok := callStackInfo[i].(IntStorageInfo)
-			if ok && (isi.Ident == intStorageInfoIdent) {
-				hasFound = true
-			}
+		} else if isi, ok := callStackInfo[i].(IntStorageInfo); ok &&
+			(isi.Ident == intStorageInfoIdent) {
+			hasFound = true
 		}
 	}
 
-	if !hasFound {
+	if hasFound {
+		return (uint64(totalBytesCount) - uint64(framePointer)), true
+	} else {
 		return 0, false
 	}
-
-	return (uint64(totalBytesCount) - uint64(framePointer)), true
 }
 
 type FuncSigInfo struct {
-	ParamListInt []IntInfo
-	ReturnInt    interface{}
+	ParamListInt    []IntInfo
+	ReturnValueInfo interface{}
 }
 
 var funcListInfo map[string]FuncSigInfo
@@ -213,6 +200,7 @@ func funcListInfoInit(tn TreeNode) {
 		for _, c := range funcSigTreeNode.Children {
 
 			if c.Kype == TNT_FUNC_PARAM_LIST {
+
 				funcParamListTreeNode := c
 
 				for _, funcParmTreeNode := range funcParamListTreeNode.Children {
@@ -235,7 +223,7 @@ func funcListInfoInit(tn TreeNode) {
 				if !ok {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
-				newFuncSigInfo.ReturnInt = ii
+				newFuncSigInfo.ReturnValueInfo = ii
 
 			}
 
@@ -248,8 +236,8 @@ func funcListInfoInit(tn TreeNode) {
 			PrintErrorAndExit(funcIdentTreeNode.Tok.LineNumber)
 		}
 
-		if _, ok := newFuncSigInfo.ReturnInt.(IntInfo); !ok {
-			newFuncSigInfo.ReturnInt = VoidInfo{BytesCount: 0}
+		if _, ok := newFuncSigInfo.ReturnValueInfo.(IntInfo); !ok {
+			newFuncSigInfo.ReturnValueInfo = VoidInfo{BytesCount: 0}
 		}
 
 		funcListInfo[funcIdent] = newFuncSigInfo
@@ -437,6 +425,7 @@ func emitStoreStringOp(a interface{}, b []byte) bool {
 
 	return true
 }
+
 func emitConvertOp(a interface{}, b IntInfo) bool {
 	var vb byte
 
@@ -486,23 +475,25 @@ func compileFuncParam(tn TreeNode) {
 	funcParamTypeTreeNode := tn.Children[1]
 
 	isi.Ident = string(funcParamIdentTreeNode.Tok.Buf)
-	ii, ok := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf))
-	if !ok {
+
+	if ii, ok := getIntInfoFromTypeString(string(funcParamTypeTreeNode.Tok.Buf)); ok {
+		isi.IsSigned = ii.IsSigned
+		isi.BytesCount = ii.BytesCount
+	} else {
 		PrintErrorAndExit(funcParamTypeTreeNode.Tok.LineNumber)
 	}
-	isi.IsSigned = ii.IsSigned
-	isi.BytesCount = ii.BytesCount
+
 	isi.BlockLevel = blockLevel
 
 	callStackInfo = append(callStackInfo, isi)
 }
 
 func compileFuncReturnType(tn TreeNode) {
-	ii, ok := getIntInfoFromTypeString(string(tn.Tok.Buf))
-	if !ok {
+	if ii, ok := getIntInfoFromTypeString(string(tn.Tok.Buf)); ok {
+		returnValueInfo = ii
+	} else {
 		PrintErrorAndExit(tn.Tok.LineNumber)
 	}
-	returnIntInfo = ii
 }
 
 func compileStmtList(tn TreeNode) {
@@ -513,9 +504,7 @@ func compileStmtList(tn TreeNode) {
 	blockLevel--
 
 	for i := len(callStackInfo) - 1; i >= 0; i-- {
-		if isi, ok :=
-			callStackInfo[i].(IntStorageInfo); ok && (isi.BlockLevel > blockLevel) {
-
+		if isi, ok := callStackInfo[i].(IntStorageInfo); ok && (isi.BlockLevel > blockLevel) {
 			emitPopOp(IntInfo{IsSigned: isi.IsSigned, BytesCount: isi.BytesCount})
 			callStackInfo = callStackInfo[:len(callStackInfo)-1]
 		} else {
@@ -538,15 +527,17 @@ func compileStmtDecl(tn TreeNode) {
 	var isi IntStorageInfo
 
 	isi.Ident = string(stmtDeclIdentTreeNode.Tok.Buf)
-	ii, ok := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf))
-	if !ok {
+
+	if ii, ok := getIntInfoFromTypeString(string(stmtDeclTypeTreeNode.Tok.Buf)); ok {
+		isi.IsSigned = ii.IsSigned
+		isi.BytesCount = ii.BytesCount
+
+		emitPushOp(ii, 0)
+	} else {
 		PrintErrorAndExit(stmtDeclTypeTreeNode.Tok.LineNumber)
 	}
-	isi.IsSigned = ii.IsSigned
-	isi.BytesCount = ii.BytesCount
-	isi.BlockLevel = blockLevel
 
-	emitPushOp(ii, 0)
+	isi.BlockLevel = blockLevel
 
 	callStackInfo = append(callStackInfo, isi)
 }
@@ -712,7 +703,7 @@ func compileStmtElse(tn TreeNode) {
 
 func compileStmtReturn(tn TreeNode) {
 	if len(tn.Children) == 0 {
-		switch v := returnIntInfo.(type) {
+		switch v := returnValueInfo.(type) {
 		case IntInfo:
 			emitPushOp(v, 0)
 			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
@@ -732,7 +723,7 @@ func compileStmtReturn(tn TreeNode) {
 	} else {
 		compileTreeNodeChildren(tn.Children)
 
-		switch returnII := returnIntInfo.(type) {
+		switch returnII := returnValueInfo.(type) {
 		case IntInfo:
 			switch v := callStackInfo[len(callStackInfo)-1].(type) {
 			case IntInfo:
@@ -923,7 +914,7 @@ func compileExprFunc(tn TreeNode) {
 
 			callStackInfo = callStackInfo[:len(callStackInfo)-len(fsi.ParamListInt)]
 
-			switch v := fsi.ReturnInt.(type) {
+			switch v := fsi.ReturnValueInfo.(type) {
 			case IntInfo:
 				callStackInfo = append(callStackInfo, v)
 			case VoidInfo:
@@ -1168,7 +1159,7 @@ func BytecodeGenerator(tn TreeNode) []byte {
 		PrintErrorAndExit(0)
 	}
 
-	if _, ok := sigInfo.ReturnInt.(VoidInfo); !ok {
+	if _, ok := sigInfo.ReturnValueInfo.(VoidInfo); !ok {
 		PrintErrorAndExit(0)
 	}
 
