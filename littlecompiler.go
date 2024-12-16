@@ -20,7 +20,11 @@ func main() {
 	toks := LexicalAnalyzer(append(buf, 0x0a))
 
 	tn := SyntaxAnalyzer(toks)
+
 	PrintTreeNode(tn, 4)
 
-	BytecodeGenerator(tn)
+	bytecode := BytecodeGenerator(tn)
+
+	fmt.Printf("%x\n", bytecode)
+
 }

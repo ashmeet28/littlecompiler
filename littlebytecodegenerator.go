@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"strconv"
 )
 
@@ -1179,8 +1178,6 @@ func BytecodeGenerator(tn TreeNode) []byte {
 			PrintErrorAndExit(0)
 		}
 	}
-
-	fmt.Printf("%x\n", bytecode)
 
 	return bytecode
 }
