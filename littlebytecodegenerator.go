@@ -41,6 +41,8 @@ var (
 	OP_LEQ byte = 0x54
 	OP_GEQ byte = 0x55
 
+	OP_CONVERT byte = 0x58
+
 	OP_LOAD  byte = 0x20
 	OP_STORE byte = 0x21
 
@@ -432,6 +434,24 @@ func emitStoreStringOp(a interface{}, b []byte) bool {
 	bytecode = append(bytecode, OP_STORE_STRING)
 	bytecode = append(bytecode, b...)
 	bytecode = append(bytecode, 0)
+
+	return true
+}
+func emitConvertOp(a interface{}, b IntInfo) bool {
+	var vb byte
+
+	switch v := a.(type) {
+	case IntInfo:
+		vb = encodeIntInfo(v)
+	case IntAddressInfo:
+		vb = encodeIntAddressInfo(v)
+	default:
+		return false
+	}
+
+	bytecode = append(bytecode, OP_CONVERT)
+	bytecode = append(bytecode, vb)
+	bytecode = append(bytecode, encodeIntInfo(b))
 
 	return true
 }
@@ -856,17 +876,27 @@ func compileExprFunc(tn TreeNode) {
 			} else {
 				PrintErrorAndExit(exprNegIntLitTreeNode.Tok.LineNumber)
 			}
+		case TNT_EXPR:
+			compileTreeNode(exprFuncParmTreeNode.Children[0])
 
+			if ok := emitConvertOp(callStackInfo[len(callStackInfo)-1], ii); ok {
+				callStackInfo = callStackInfo[:len(callStackInfo)-1]
+				callStackInfo = append(callStackInfo, ii)
+			} else {
+				PrintErrorAndExit(tn.Tok.LineNumber)
+			}
 		default:
-			PrintErrorAndExit(tn.Tok.LineNumber)
+			PrintErrorAndExit(0)
 		}
 	} else {
 		funcParmListStartingAddress := callStackInfoGetTotalBytesCount() - framePointer
 
+		callStackInfoLenBefore := len(callStackInfo)
+
 		compileTreeNodeChildren(tn.Children)
 
 		if fsi, ok := funcListInfo[string(tn.Tok.Buf)]; ok {
-			if len(callStackInfo) < len(fsi.ParamListInt) {
+			if (len(callStackInfo) - callStackInfoLenBefore) != len(fsi.ParamListInt) {
 				PrintErrorAndExit(tn.Tok.LineNumber)
 			}
 
