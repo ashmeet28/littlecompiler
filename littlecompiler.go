@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 )
@@ -16,8 +17,16 @@ func PrintErrorAndExit(l int) {
 }
 
 func main() {
-	buf, _ := os.ReadFile(os.Args[1])
-	toks := LexicalAnalyzer(append(buf, 0x0a))
+	sourceCodeFilePath := os.Args[1]
+	bytecodeFilePath := os.Args[2]
+
+	data, err := os.ReadFile(sourceCodeFilePath)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	toks := LexicalAnalyzer(append(data, 0x0a))
 
 	tn := SyntaxAnalyzer(toks)
 
@@ -25,6 +34,7 @@ func main() {
 
 	bytecode := BytecodeGenerator(tn)
 
-	fmt.Printf("%x\n", bytecode)
-
+	if err := os.WriteFile(bytecodeFilePath, bytecode, 0666); err != nil {
+		log.Fatal(err)
+	}
 }

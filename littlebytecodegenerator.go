@@ -1164,6 +1164,8 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	blankFuncAddrList = map[string]int{}
 
+	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(0))
+
 	blankFuncAddrList["main"] = emitBlankPushOp()
 
 	emitOp(OP_CALL)
