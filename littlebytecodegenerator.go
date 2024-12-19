@@ -879,8 +879,6 @@ func compileExprFunc(tn TreeNode) {
 			PrintErrorAndExit(0)
 		}
 	} else {
-		funcParmListStartingAddress := callStackInfoGetTotalBytesCount() - framePointer
-
 		callStackInfoLenBefore := len(callStackInfo)
 
 		compileTreeNodeChildren(tn.Children)
@@ -903,9 +901,6 @@ func compileExprFunc(tn TreeNode) {
 					PrintErrorAndExit(tn.Tok.LineNumber)
 				}
 			}
-
-			emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT},
-				uint64(funcParmListStartingAddress))
 
 			blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
 
@@ -1163,8 +1158,6 @@ func BytecodeGenerator(tn TreeNode) []byte {
 	}
 
 	blankFuncAddrList = map[string]int{}
-
-	emitPushOp(IntInfo{IsSigned: false, BytesCount: ADDR_BYTES_COUNT}, uint64(0))
 
 	blankFuncAddrList["main"] = emitBlankPushOp()
 
