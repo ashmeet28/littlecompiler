@@ -615,6 +615,8 @@ func compileStmtStoreString(tn TreeNode) {
 	}
 }
 
+// TODO: Fix poping of variables on break and continue
+
 func compileStmtWhile(tn TreeNode) {
 	stmtWhileStartingAddr := len(bytecode)
 
