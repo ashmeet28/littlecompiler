@@ -104,12 +104,15 @@ var blockLevel int
 var returnValueInfo interface{}
 var framePointer int
 
+var whileBlockLevel int
+
 var callStackInfo []interface{}
 
 var STARTING_BLOCK_LEVEL int = 1
 
 func callStackInfoReset() {
 	blockLevel = STARTING_BLOCK_LEVEL
+	whileBlockLevel = STARTING_BLOCK_LEVEL
 	returnValueInfo = VoidInfo{BytesCount: 0}
 	framePointer = 0
 	callStackInfo = make([]interface{}, 0)
@@ -615,8 +618,6 @@ func compileStmtStoreString(tn TreeNode) {
 	}
 }
 
-// TODO: Fix poping of variables on break and continue
-
 func compileStmtWhile(tn TreeNode) {
 	stmtWhileStartingAddr := len(bytecode)
 
@@ -635,6 +636,8 @@ func compileStmtWhile(tn TreeNode) {
 
 	blankBreakStmtAddrList = append(blankBreakStmtAddrList, make([]int, 0))
 	blankContinueStmtAddrList = append(blankContinueStmtAddrList, make([]int, 0))
+
+	whileBlockLevel = blockLevel
 
 	compileTreeNode(stmtListTreeNode)
 
@@ -754,6 +757,14 @@ func compileStmtReturn(tn TreeNode) {
 }
 
 func compileStmtBreak(tn TreeNode) {
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		if isi, ok := callStackInfo[i].(IntStorageInfo); ok && (isi.BlockLevel > whileBlockLevel) {
+			emitPopOp(IntInfo{IsSigned: isi.IsSigned, BytesCount: isi.BytesCount})
+		} else {
+			break
+		}
+	}
+
 	if len(blankBreakStmtAddrList) != 0 {
 		blankBreakStmtAddrList[len(blankBreakStmtAddrList)-1] = append(
 			blankBreakStmtAddrList[len(blankBreakStmtAddrList)-1], emitBlankPushOp())
@@ -765,6 +776,14 @@ func compileStmtBreak(tn TreeNode) {
 }
 
 func compileStmtContinue(tn TreeNode) {
+	for i := len(callStackInfo) - 1; i >= 0; i-- {
+		if isi, ok := callStackInfo[i].(IntStorageInfo); ok && (isi.BlockLevel > whileBlockLevel) {
+			emitPopOp(IntInfo{IsSigned: isi.IsSigned, BytesCount: isi.BytesCount})
+		} else {
+			break
+		}
+	}
+
 	if len(blankContinueStmtAddrList) != 0 {
 		blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1] = append(
 			blankContinueStmtAddrList[len(blankContinueStmtAddrList)-1], emitBlankPushOp())
