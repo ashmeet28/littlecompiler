@@ -448,7 +448,6 @@ func emitConvertOp(a interface{}, b IntInfo) bool {
 }
 
 func compileFuncList(tn TreeNode) {
-	funcAddrList = make(map[string]int)
 	compileTreeNodeChildren(tn.Children)
 }
 
@@ -1184,6 +1183,17 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	emitOp(OP_CALL)
 	emitOp(OP_HALT)
+
+	funcAddrList = make(map[string]int)
+
+	funcAddrList["ecall"] = len(bytecode)
+
+	emitOp(OP_ECALL)
+	emitReturnOp(VoidInfo{BytesCount: 0})
+
+	funcListInfo["ecall"] = FuncSigInfo{
+		ParamListInt:    make([]IntInfo, 0),
+		ReturnValueInfo: VoidInfo{BytesCount: 0}}
 
 	compileTreeNodeChildren(tn.Children)
 
