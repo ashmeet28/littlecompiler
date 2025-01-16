@@ -112,9 +112,9 @@ var STARTING_BLOCK_LEVEL int = 1
 
 func callStackInfoReset() {
 	blockLevel = STARTING_BLOCK_LEVEL
-	whileBlockLevel = STARTING_BLOCK_LEVEL
 	returnValueInfo = VoidInfo{BytesCount: 0}
 	framePointer = 0
+	whileBlockLevel = STARTING_BLOCK_LEVEL
 	callStackInfo = make([]interface{}, 0)
 }
 
