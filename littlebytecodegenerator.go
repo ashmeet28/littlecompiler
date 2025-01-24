@@ -248,7 +248,12 @@ func funcListInfoInit(tn TreeNode) {
 
 var funcAddrList map[string]int
 
-var blankFuncAddrList map[string]int
+type BlankFuncCall struct {
+	Ident string
+	Addr  int
+}
+
+var blankFuncCallList []BlankFuncCall
 
 var blankContinueStmtAddrList [][]int
 var blankBreakStmtAddrList [][]int
@@ -922,7 +927,8 @@ func compileExprFunc(tn TreeNode) {
 				}
 			}
 
-			blankFuncAddrList[string(tn.Tok.Buf)] = emitBlankPushOp()
+			blankFuncCallList = append(blankFuncCallList,
+				BlankFuncCall{Ident: string(tn.Tok.Buf), Addr: emitBlankPushOp()})
 
 			emitOp(OP_CALL)
 
@@ -1177,9 +1183,10 @@ func BytecodeGenerator(tn TreeNode) []byte {
 		PrintErrorAndExit(0)
 	}
 
-	blankFuncAddrList = map[string]int{}
+	blankFuncCallList = make([]BlankFuncCall, 0)
 
-	blankFuncAddrList["main"] = emitBlankPushOp()
+	blankFuncCallList = append(blankFuncCallList,
+		BlankFuncCall{Ident: "main", Addr: emitBlankPushOp()})
 
 	emitOp(OP_CALL)
 	emitOp(OP_HALT)
@@ -1188,8 +1195,8 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	funcAddrList["ecall"] = len(bytecode)
 
-	emitOp(OP_ECALL)
-	emitReturnOp(VoidInfo{BytesCount: 0})
+	bytecode = append(bytecode,
+		0x02, 0x0c, 0x08, 0xf0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x05, 0x00)
 
 	funcListInfo["ecall"] = FuncSigInfo{
 		ParamListInt:    make([]IntInfo, 0),
@@ -1197,9 +1204,9 @@ func BytecodeGenerator(tn TreeNode) []byte {
 
 	compileTreeNodeChildren(tn.Children)
 
-	for funcIdent, blankPushOpAddr := range blankFuncAddrList {
-		if funcAddr, ok := funcAddrList[funcIdent]; ok {
-			backpatchBlankPushOp(blankPushOpAddr, uint64(funcAddr)-(uint64(blankPushOpAddr)+10))
+	for _, bfc := range blankFuncCallList {
+		if funcAddr, ok := funcAddrList[bfc.Ident]; ok {
+			backpatchBlankPushOp(bfc.Addr, uint64(funcAddr)-(uint64(bfc.Addr)+10))
 		} else {
 			PrintErrorAndExit(0)
 		}
