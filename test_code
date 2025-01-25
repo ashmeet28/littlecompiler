@@ -227,7 +227,22 @@ func test_while()
     end
 end
 
-# 42 PASS
+
+func long_func(
+        a i64,
+        b i64,
+        c u8) u8
+    return u8(a) +
+        u8(b) + c
+end
+
+func test_long_func()
+    if long_func(i64(-1), i64(-1), u8(3)) == u8(1)
+        print_pass()
+    end
+end
+
+# 43 PASS
 
 func main()
     test_true()
@@ -235,4 +250,5 @@ func main()
     test_char()
     test_binary_op()
     test_while()
+    test_long_func()
 end
