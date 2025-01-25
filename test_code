@@ -208,9 +208,26 @@ func test_while()
         print_pass()
     end
 
+    a = u8(2)
+    while true()
+        let b u8
+        b = u8(7)
+
+        print_pass()
+
+        a = a - u8(1)
+        if a != u8(0)
+            continue
+        end
+        break
+    end
+
+    if b == u8(0)
+        print_pass()
+    end
 end
 
-# 39 PASS
+# 42 PASS
 
 func main()
     test_true()
