@@ -172,13 +172,50 @@ func test_binary_op()
     if a
         print_pass()
     end
+
+    if print_pass_and_return_false() && print_pass_and_return_true() &&
+        print_pass_and_return_true()
+
+        print_pass()
+    end
+
+    a = u8(3) - u8(2) * u8(5)
+
+    if a == u8(5)
+        print_pass()
+    end
 end
 
-# 34 PASS
+
+func test_while()
+    let a u8
+    a = u8(2)
+
+    while true()
+        let b u8
+        b = u8(7)
+
+        print_pass()
+
+        a = a - u8(1)
+        if a == u8(0)
+            break
+        end
+    end
+
+    let b u8
+    if b == u8(0)
+        print_pass()
+    end
+
+end
+
+# 39 PASS
 
 func main()
     test_true()
     test_false()
     test_char()
     test_binary_op()
+    test_while()
 end
