@@ -247,8 +247,8 @@ end
 func main()
     test_true()
     test_false()
+    test_long_func()
     test_char()
     test_binary_op()
     test_while()
-    test_long_func()
 end
