@@ -1,0 +1,184 @@
+func true() u8
+    return u8(1)
+end
+
+func false() u8
+    return u8(0)
+end
+
+func print_pass_and_return_true() u8
+    print_pass()
+    return true()
+end
+
+func print_pass_and_return_false() u8
+    print_pass()
+    return false()
+end
+
+func print_pass()
+    let a u64
+    a = u64(0x30_0000)
+    a <- "PASS"
+    ecall()
+end
+
+func test_true()
+    if true() == u8(1)
+        print_pass()
+    end
+end
+
+
+func test_false()
+    if false() == u8(0)
+        print_pass()
+    end
+end
+
+
+func test_char()
+    let a u8
+    a = u8('c')
+
+    if a == u8('c')
+        print_pass()
+    end
+
+    a =  u8('\'')
+
+    if a == u8(0x27)
+        print_pass()
+    end
+
+    a = u8('\\')
+
+    if a == u8(0x5c)
+        print_pass()
+    end
+end
+
+func test_binary_op()
+    let a u8
+    let b i8
+
+    a = u8(255) + u8(2) # 1
+
+    if a == u8(1)
+        print_pass()
+    end
+
+    a = u8(1) - u8(3) # 254
+
+    if a == u8(254)
+        print_pass()
+    end
+
+    a = u8(83) * u8(89) # 219
+
+    if a == u8(219)
+        print_pass()
+    end
+
+    a = u8(128) >> u8(1) # 64
+    if a == u8(64)
+        print_pass()
+    end
+
+    b = i8(-128) >> u8(1) # -64
+    if b == i8(-64)
+        print_pass()
+    end
+
+    a = u8(128) >> u8(11) # 0
+    if a == u8(0)
+        print_pass()
+    end
+
+    b = i8(-128) >> u8(11) # -1
+    if b == i8(-1)
+        print_pass()
+    end
+
+    a = u8(128) >> i8(1) # 64
+    if a == u8(64)
+        print_pass()
+    end
+
+    a = u8(64) << i8(1) # 128
+    if a == u8(128)
+        print_pass()
+    end
+    
+    a = u8(64) << i8(2) # 0
+    if a == u8(0)
+        print_pass()
+    end
+
+    b = i8(64) << i8(2) # 0
+    if b == i8(0)
+        print_pass()
+    end
+
+    a = u8(1)
+    b = i8(1)
+
+    if a && b
+        print_pass()
+    end
+
+    if a || b
+        print_pass()
+    end
+
+    if a
+        print_pass()
+    end
+
+    if b
+        print_pass()
+    end
+
+    if print_pass_and_return_true()
+        print_pass()
+    end
+
+    if print_pass_and_return_true() && print_pass_and_return_true()
+        print_pass()
+    end
+
+    if print_pass_and_return_false() && print_pass_and_return_true()
+        print_pass()
+    end
+
+    if print_pass_and_return_false() || print_pass_and_return_true() ||
+        print_pass_and_return_true()
+
+        print_pass()
+    end
+
+    if print_pass_and_return_true() && print_pass_and_return_false() &&
+        print_pass_and_return_true()
+
+        print_pass()
+    end
+
+    a = print_pass_and_return_true()
+    if a
+        print_pass()
+    end
+
+    a = print_pass_and_return_false()
+    if a
+        print_pass()
+    end
+end
+
+# 34 PASS
+
+func main()
+    test_true()
+    test_false()
+    test_char()
+    test_binary_op()
+end
