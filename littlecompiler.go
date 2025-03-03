@@ -30,7 +30,7 @@ func main() {
 
 	tn := SyntaxAnalyzer(toks)
 
-	PrintTreeNode(tn, 4)
+	// PrintTreeNode(tn, 4)
 
 	bytecode := BytecodeGenerator(tn)
 
