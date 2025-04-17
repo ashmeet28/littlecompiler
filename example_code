@@ -1,0 +1,28 @@
+func i64_add(a i64, b i64) i64
+    return a + b
+end
+
+func main()
+    let a u8
+    let b u16
+    let c u32
+    let d u64
+
+    let e i8
+    let f i16
+    let g i32
+    let h i64
+
+    if u8(1)
+        let a i64
+        a = i64_add(i64(2), i64(3))
+        while a > i64(0)
+            a = a - i64(1)
+        end
+    end
+
+    let addr u64
+    addr = u64(0x30_0000)
+    addr <- "Hello World!"
+    ecall() # Prints string at address 0x30_0000
+end
